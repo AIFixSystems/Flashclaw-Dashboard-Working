@@ -1,7 +1,6 @@
 import time
 
 from flask import Blueprint, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.services.supabase import supabase, select, select_one, eq
 
 admin_bp = Blueprint('admin', __name__)
@@ -17,9 +16,8 @@ def _get_current_user(user_id_str):
 
 
 @admin_bp.route('/api/admin/users', methods=['GET'])
-@jwt_required()
 def list_users():
-    current_user_id = get_jwt_identity()
+    current_user_id = None
     current_user = _get_current_user(current_user_id)
     if not current_user:
         return jsonify({'error': 'User not found'}), 404

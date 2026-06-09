@@ -1,5 +1,4 @@
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.services.supabase import supabase, select, select_one, eq, in_
 
 analytics_bp = Blueprint('analytics', __name__)
@@ -13,10 +12,12 @@ def _get_current_user(user_id_str):
 
 
 @analytics_bp.route('/api/analytics/pipeline', methods=['GET'])
-@jwt_required()
 def pipeline_analytics():
-    current_user_id = get_jwt_identity()
-    user = _get_current_user(current_user_id)
+    current_user_id = None
+    # Use default user (ID=1) when no authentication
+    if current_user_id is None:
+        current_user_id = 1
+    user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
         return jsonify({'error': 'User not found'}), 404
 
@@ -64,10 +65,12 @@ def pipeline_analytics():
 
 
 @analytics_bp.route('/api/analytics/by-source', methods=['GET'])
-@jwt_required()
 def analytics_by_source():
-    current_user_id = get_jwt_identity()
-    user = _get_current_user(current_user_id)
+    current_user_id = None
+    # Use default user (ID=1) when no authentication
+    if current_user_id is None:
+        current_user_id = 1
+    user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
         return jsonify({'error': 'User not found'}), 404
 

@@ -1,6 +1,5 @@
 from datetime import datetime, timezone, timedelta
 from flask import Blueprint, jsonify, request
-from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.services.supabase import supabase, select, select_one, eq, in_, gte, lte
 
 activity_bp = Blueprint('activity', __name__)
@@ -24,8 +23,12 @@ def _build_daily_breakdown(workspace_id, start_date, end_date):
         day_end_iso = day_end.isoformat()
 
         # Generated emails sent today
-        leads_in_ws = supabase.table('leads').select('id').eq('workspace_id', workspace_id).execute()
-        ws_lead_ids = [l['id'] for l in leads_in_ws.data]
+        ws_lead_ids = []
+        try:
+            leads_in_ws = supabase.table('leads').select('id').eq('workspace_id', workspace_id).execute()
+            ws_lead_ids = [l['id'] for l in leads_in_ws.data]
+        except Exception:
+            pass
 
         emails_sent = 0
         if ws_lead_ids:
@@ -36,17 +39,34 @@ def _build_daily_breakdown(workspace_id, start_date, end_date):
                 pass
 
         # LinkedIn activities today
-        connections_result = supabase.table('linkedin_activities').select('id', count='exact').eq('workspace_id', workspace_id).eq('activity_type', 'connection_request').gte('created_at', day_start_iso).lt('created_at', day_end_iso).execute()
-        connections_sent = int(connections_result.count) if hasattr(connections_result, 'count') else len(connections_result.data)
+        connections_sent = 0
+        replies = 0
+        meetings = 0
+        positive_replies = 0
+        
+        try:
+            connections_result = supabase.table('linkedin_activities').select('id', count='exact').eq('workspace_id', workspace_id).eq('activity_type', 'connection_request').gte('created_at', day_start_iso).lt('created_at', day_end_iso).execute()
+            connections_sent = int(connections_result.count) if hasattr(connections_result, 'count') else len(connections_result.data)
+        except Exception:
+            pass
 
-        replies_result = supabase.table('linkedin_activities').select('id', count='exact').eq('workspace_id', workspace_id).in_('activity_type', ['reply_received', 'positive_reply']).gte('created_at', day_start_iso).lt('created_at', day_end_iso).execute()
-        replies = int(replies_result.count) if hasattr(replies_result, 'count') else len(replies_result.data)
+        try:
+            replies_result = supabase.table('linkedin_activities').select('id', count='exact').eq('workspace_id', workspace_id).in_('activity_type', ['reply_received', 'positive_reply']).gte('created_at', day_start_iso).lt('created_at', day_end_iso).execute()
+            replies = int(replies_result.count) if hasattr(replies_result, 'count') else len(replies_result.data)
+        except Exception:
+            pass
 
-        meetings_result = supabase.table('linkedin_activities').select('id', count='exact').eq('workspace_id', workspace_id).eq('activity_type', 'meeting_booked').gte('created_at', day_start_iso).lt('created_at', day_end_iso).execute()
-        meetings = int(meetings_result.count) if hasattr(meetings_result, 'count') else len(meetings_result.data)
+        try:
+            meetings_result = supabase.table('linkedin_activities').select('id', count='exact').eq('workspace_id', workspace_id).eq('activity_type', 'meeting_booked').gte('created_at', day_start_iso).lt('created_at', day_end_iso).execute()
+            meetings = int(meetings_result.count) if hasattr(meetings_result, 'count') else len(meetings_result.data)
+        except Exception:
+            pass
 
-        positive_replies_result = supabase.table('linkedin_activities').select('id', count='exact').eq('workspace_id', workspace_id).in_('activity_type', ['positive_reply', 'interested']).gte('created_at', day_start_iso).lt('created_at', day_end_iso).execute()
-        positive_replies = int(positive_replies_result.count) if hasattr(positive_replies_result, 'count') else len(positive_replies_result.data)
+        try:
+            positive_replies_result = supabase.table('linkedin_activities').select('id', count='exact').eq('workspace_id', workspace_id).in_('activity_type', ['positive_reply', 'interested']).gte('created_at', day_start_iso).lt('created_at', day_end_iso).execute()
+            positive_replies = int(positive_replies_result.count) if hasattr(positive_replies_result, 'count') else len(positive_replies_result.data)
+        except Exception:
+            pass
 
         days.append({
             'date': day_start.strftime('%Y-%m-%d'),
@@ -63,15 +83,17 @@ def _build_daily_breakdown(workspace_id, start_date, end_date):
 
 
 @activity_bp.route('/api/activity/timeframe', methods=['GET'])
-@jwt_required()
 def get_activity_timeframe():
     """
     Activity analytics for a configurable time range.
     ?days=7 | 30 | 90 | 180 | all
     Returns per-day breakdown + aggregated totals + metrics breakdown.
     """
-    current_user_id = get_jwt_identity()
-    user = _get_current_user(current_user_id)
+    current_user_id = None
+    # Use default user (ID=1) when no authentication
+    if current_user_id is None:
+        current_user_id = 1
+    user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
         return jsonify({'error': 'User not found'}), 404
 
@@ -128,8 +150,11 @@ def get_activity_timeframe():
     emails_sent = 0
     email_replies = 0
     ws_lead_ids = []
-    leads_res = supabase.table('leads').select('id').eq('workspace_id', workspace_id).execute()
-    ws_lead_ids = [l['id'] for l in leads_res.data]
+    try:
+        leads_res = supabase.table('leads').select('id').eq('workspace_id', workspace_id).execute()
+        ws_lead_ids = [l['id'] for l in leads_res.data]
+    except Exception:
+        pass
 
     if ws_lead_ids:
         try:
@@ -144,17 +169,34 @@ def get_activity_timeframe():
             pass
 
     # LinkedIn totals in period
-    connections_result = supabase.table('linkedin_activities').select('id', count='exact').eq('workspace_id', workspace_id).eq('activity_type', 'connection_request').gte('created_at', start_date_iso).execute()
-    connections_sent = int(connections_result.count) if hasattr(connections_result, 'count') else len(connections_result.data)
+    connections_sent = 0
+    dms_sent = 0
+    li_replies = 0
+    positive_replies = 0
+    
+    try:
+        connections_result = supabase.table('linkedin_activities').select('id', count='exact').eq('workspace_id', workspace_id).eq('activity_type', 'connection_request').gte('created_at', start_date_iso).execute()
+        connections_sent = int(connections_result.count) if hasattr(connections_result, 'count') else len(connections_result.data)
+    except Exception:
+        pass
 
-    dms_result = supabase.table('linkedin_activities').select('id', count='exact').eq('workspace_id', workspace_id).eq('activity_type', 'dm_sent').gte('created_at', start_date_iso).execute()
-    dms_sent = int(dms_result.count) if hasattr(dms_result, 'count') else len(dms_result.data)
+    try:
+        dms_result = supabase.table('linkedin_activities').select('id', count='exact').eq('workspace_id', workspace_id).eq('activity_type', 'dm_sent').gte('created_at', start_date_iso).execute()
+        dms_sent = int(dms_result.count) if hasattr(dms_result, 'count') else len(dms_result.data)
+    except Exception:
+        pass
 
-    replies_result = supabase.table('linkedin_activities').select('id', count='exact').eq('workspace_id', workspace_id).in_('activity_type', ['reply_received', 'positive_reply']).gte('created_at', start_date_iso).execute()
-    li_replies = int(replies_result.count) if hasattr(replies_result, 'count') else len(replies_result.data)
+    try:
+        replies_result = supabase.table('linkedin_activities').select('id', count='exact').eq('workspace_id', workspace_id).in_('activity_type', ['reply_received', 'positive_reply']).gte('created_at', start_date_iso).execute()
+        li_replies = int(replies_result.count) if hasattr(replies_result, 'count') else len(replies_result.data)
+    except Exception:
+        pass
 
-    positive_result = supabase.table('linkedin_activities').select('id', count='exact').eq('workspace_id', workspace_id).in_('activity_type', ['positive_reply', 'interested']).gte('created_at', start_date_iso).execute()
-    positive_replies = int(positive_result.count) if hasattr(positive_result, 'count') else len(positive_result.data)
+    try:
+        positive_result = supabase.table('linkedin_activities').select('id', count='exact').eq('workspace_id', workspace_id).in_('activity_type', ['positive_reply', 'interested']).gte('created_at', start_date_iso).execute()
+        positive_replies = int(positive_result.count) if hasattr(positive_result, 'count') else len(positive_result.data)
+    except Exception:
+        pass
 
     # Daily breakdown for charts
     daily_breakdown = _build_daily_breakdown(workspace_id, start_date, end_date)
@@ -186,10 +228,12 @@ def get_activity_timeframe():
 
 
 @activity_bp.route('/api/activity', methods=['GET'])
-@jwt_required()
 def get_activity():
-    current_user_id = get_jwt_identity()
-    user = _get_current_user(current_user_id)
+    current_user_id = None
+    # Use default user (ID=1) when no authentication
+    if current_user_id is None:
+        current_user_id = 1
+    user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
         return jsonify({'error': 'User not found'}), 404
 
@@ -209,8 +253,12 @@ def get_activity():
     start_date_iso = start_date.isoformat()
 
     # Totals for the period
-    leads_in_ws = supabase.table('leads').select('id').eq('workspace_id', workspace_id).execute()
-    ws_lead_ids = [l['id'] for l in leads_in_ws.data]
+    ws_lead_ids = []
+    try:
+        leads_in_ws = supabase.table('leads').select('id').eq('workspace_id', workspace_id).execute()
+        ws_lead_ids = [l['id'] for l in leads_in_ws.data]
+    except Exception:
+        pass
 
     emails_sent = 0
     if ws_lead_ids:
@@ -220,17 +268,34 @@ def get_activity():
         except Exception:
             pass
 
-    connections_result = supabase.table('linkedin_activities').select('id', count='exact').eq('workspace_id', workspace_id).eq('activity_type', 'connection_request').gte('created_at', start_date_iso).execute()
-    connections_sent = int(connections_result.count) if hasattr(connections_result, 'count') else len(connections_result.data)
+    connections_sent = 0
+    replies = 0
+    meetings = 0
+    positive_replies = 0
+    
+    try:
+        connections_result = supabase.table('linkedin_activities').select('id', count='exact').eq('workspace_id', workspace_id).eq('activity_type', 'connection_request').gte('created_at', start_date_iso).execute()
+        connections_sent = int(connections_result.count) if hasattr(connections_result, 'count') else len(connections_result.data)
+    except Exception:
+        pass
 
-    replies_result = supabase.table('linkedin_activities').select('id', count='exact').eq('workspace_id', workspace_id).in_('activity_type', ['reply_received', 'positive_reply']).gte('created_at', start_date_iso).execute()
-    replies = int(replies_result.count) if hasattr(replies_result, 'count') else len(replies_result.data)
+    try:
+        replies_result = supabase.table('linkedin_activities').select('id', count='exact').eq('workspace_id', workspace_id).in_('activity_type', ['reply_received', 'positive_reply']).gte('created_at', start_date_iso).execute()
+        replies = int(replies_result.count) if hasattr(replies_result, 'count') else len(replies_result.data)
+    except Exception:
+        pass
 
-    meetings_result = supabase.table('linkedin_activities').select('id', count='exact').eq('workspace_id', workspace_id).eq('activity_type', 'meeting_booked').gte('created_at', start_date_iso).execute()
-    meetings = int(meetings_result.count) if hasattr(meetings_result, 'count') else len(meetings_result.data)
+    try:
+        meetings_result = supabase.table('linkedin_activities').select('id', count='exact').eq('workspace_id', workspace_id).eq('activity_type', 'meeting_booked').gte('created_at', start_date_iso).execute()
+        meetings = int(meetings_result.count) if hasattr(meetings_result, 'count') else len(meetings_result.data)
+    except Exception:
+        pass
 
-    positive_replies_result = supabase.table('linkedin_activities').select('id', count='exact').eq('workspace_id', workspace_id).in_('activity_type', ['positive_reply', 'interested']).gte('created_at', start_date_iso).execute()
-    positive_replies = int(positive_replies_result.count) if hasattr(positive_replies_result, 'count') else len(positive_replies_result.data)
+    try:
+        positive_replies_result = supabase.table('linkedin_activities').select('id', count='exact').eq('workspace_id', workspace_id).in_('activity_type', ['positive_reply', 'interested']).gte('created_at', start_date_iso).execute()
+        positive_replies = int(positive_replies_result.count) if hasattr(positive_replies_result, 'count') else len(positive_replies_result.data)
+    except Exception:
+        pass
 
     # Daily breakdown for charts
     daily_breakdown = _build_daily_breakdown(workspace_id, start_date, end_date)

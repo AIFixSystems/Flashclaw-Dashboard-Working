@@ -3,7 +3,6 @@
 import logging, os, requests
 from datetime import datetime, timezone
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.services.hubspot_service import (
     get_owners, get_open_deals_by_owner, get_deals_for_owner,
     search_deals_by_owner_name, search_owner_by_name,
@@ -142,21 +141,18 @@ def _send_batched_slack(events):
         except Exception as e:
             logger.warning(f'Slack webhook batch failed: {e}')
 @hubspot_bp.route('/api/hubspot/status', methods=['GET'])
-@jwt_required()
 def status():
     token = os.environ.get('HUBSPOT_ACCESS_TOKEN', '')
     return jsonify({'configured': bool(token), 'preview': (token[:12] + '...') if token else None})
 
 
 @hubspot_bp.route('/api/hubspot/dashboard', methods=['GET'])
-@jwt_required()
 def dashboard():
     try: return jsonify(get_open_deals_by_owner())
     except HubSpotError as e: return jsonify({'error': str(e)}), 502
 
 
 @hubspot_bp.route('/api/hubspot/owner/<owner_id>/deals', methods=['GET'])
-@jwt_required()
 def owner_deals(owner_id):
     limit = request.args.get('limit', 20, type=int)
     closed = request.args.get('closed', 'false').lower() == 'true'
@@ -170,7 +166,6 @@ def owner_deals(owner_id):
 
 
 @hubspot_bp.route('/api/hubspot/search/owners', methods=['GET'])
-@jwt_required()
 def search_owners():
     q = request.args.get('q', '').strip()
     if not q: return jsonify({'error': 'q required'}), 400
@@ -182,7 +177,6 @@ def search_owners():
 
 
 @hubspot_bp.route('/api/hubspot/my-dashboard', methods=['GET'])
-@jwt_required()
 def my_dashboard():
     """Returns Anna Jordan's deals (last 30 days) with dashboard-friendly stats."""
     from app.services.hubspot_service import get_deals_for_owner, get_owners
@@ -223,7 +217,6 @@ def my_dashboard():
 
 
 @hubspot_bp.route('/api/hubspot/search/deals', methods=['GET'])
-@jwt_required()
 def deals_by_owner():
     q = request.args.get('q', '').strip()
     if not q: return jsonify({'error': 'q required'}), 400

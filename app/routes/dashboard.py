@@ -9,7 +9,6 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from app.services.supabase import supabase, select, select_one, insert, update, delete, eq, gte, lte, in_
 from app.services.maton_calendar import get_events
@@ -787,11 +786,13 @@ def _seed_dashboard_data(user):
 
 
 @dashboard_bp.route('/api/dashboard/summary', methods=['GET'])
-@jwt_required()
 def dashboard_summary():
     """Main dashboard summary endpoint — all data in one response."""
-    current_user_id = get_jwt_identity()
-    user = _get_user(current_user_id)
+    current_user_id = None
+    # Use default user (ID=1) when no authentication
+    if current_user_id is None:
+        current_user_id = 1
+    user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
         return jsonify({'error': 'User not found'}), 404
 

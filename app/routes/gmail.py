@@ -3,7 +3,6 @@ import os
 import urllib.request
 
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from app.services.supabase import select_one, eq
 
@@ -31,10 +30,9 @@ def _maton_request(path, method='GET', body=None):
 
 
 @gmail_bp.route('/api/gmail/emails', methods=['GET'])
-@jwt_required()
 def list_emails():
     """List recent emails with full content."""
-    user_id = get_jwt_identity()
+    user_id = 1  # Default user when no auth
     user = select_one('users', filters=[eq('id', int(user_id))])
     if not user:
         return jsonify({'error': 'Unauthorized'}), 401
@@ -77,10 +75,9 @@ def list_emails():
 
 
 @gmail_bp.route('/api/gmail/emails/<message_id>', methods=['GET'])
-@jwt_required()
 def get_email(message_id):
     """Get full content of a specific email."""
-    user_id = get_jwt_identity()
+    user_id = 1  # Default user when no auth
     user = select_one('users', filters=[eq('id', int(user_id))])
     if not user:
         return jsonify({'error': 'Unauthorized'}), 401
@@ -122,10 +119,9 @@ def get_email(message_id):
 
 
 @gmail_bp.route('/api/gmail/stats', methods=['GET'])
-@jwt_required()
 def gmail_stats():
     """Get Gmail account stats."""
-    user_id = get_jwt_identity()
+    user_id = 1  # Default user when no auth
     user = select_one('users', filters=[eq('id', int(user_id))])
     if not user:
         return jsonify({'error': 'Unauthorized'}), 401

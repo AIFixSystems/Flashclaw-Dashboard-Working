@@ -35,7 +35,7 @@
 body{font-family:'Sora',-apple-system,sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;min-height:100vh}
 
 /* Login */
-#login-view{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg)}
+#login-view{display:none;align-items:center;justify-content:center;min-height:100vh;background:var(--bg)}
 .login-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:48px 40px;width:420px;max-width:92vw;box-shadow:var(--shadow)}
 .login-card h1{font-size:26px;margin-bottom:4px;display:flex;align-items:center;gap:12px}
 .login-card .sub{color:var(--text-sec);font-size:14px;margin-bottom:28px}
@@ -57,7 +57,7 @@ body{font-family:'Sora',-apple-system,sans-serif;background:var(--bg);color:var(
 .btn-danger{background:var(--danger);border:none;color:#fff;padding:6px 12px;border-radius:var(--radius-sm);font-family:'Sora',sans-serif;font-weight:500;font-size:12px;cursor:pointer}
 .btn-danger:hover{opacity:.85}
 
-#app-view{display:none;min-height:100vh}
+#app-view{display:block;min-height:100vh}
 
 /* Sidebar */
 .sidebar{width:var(--sidebar-w);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100}
@@ -1106,8 +1106,8 @@ tr:last-child td{border-bottom:none}
 </div>
 
 <script>
-const API_BASE = 'https://stroke-safer-rental-davis.trycloudflare.com';
-let authToken = localStorage.getItem('lhai_token') || null;
+const API_BASE = 'https://5000-10d627ea-3d59-4fc1-a555-5c12162efa94.daytonaproxy01.net';
+let authToken = localStorage.getItem('lhai_token') || 'demo-token-bypass-auth';
 let liStatsCache = {};
 let liFeedCache = [];
 let activityLogCache = [];
@@ -2109,6 +2109,14 @@ function sendEmailFromGen() {
 }
 
 /* === AI CHAT === */
+function _addChatMsg(msgsEl, sender, text) {
+  var msgDiv = document.createElement('div');
+  msgDiv.className = 'chat-msg ai';
+  msgDiv.innerHTML = '<div class="sender">' + escapeHtml(sender) + '</div><div class="bubble">' + formatChatResponse(text) + '</div>';
+  msgsEl.appendChild(msgDiv);
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+}
+
 function sendChatMessage(text) {
   var input = document.getElementById('chat-input');
   var msg = text || input.value.trim();
@@ -2127,7 +2135,7 @@ function sendChatMessage(text) {
   var bubble = aiDiv.querySelector('.bubble');
 
   if (authToken) {
-    firehose = {
+    var firehose = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
       body: JSON.stringify({ messages: [{role: 'user', content: msg}] })
@@ -2162,11 +2170,11 @@ function sendChatMessage(text) {
         }).catch(function() { bubble.innerHTML = formatChatResponse(fullText || 'Error reading stream'); });
       }
       tryRead();
-    }).catch(function() {
-      _addChatMsg(msgsEl, '🤖', 'Sorry, unable to reach the AI assistant. Check your connection.');
+    }).catch(function(err) {
+      bubble.innerHTML = 'Sorry, unable to reach the AI assistant. Error: ' + (err.message || 'Connection failed');
     });
   } else {
-    _addChatMsg(msgsEl, '🤖', 'Please connect your backend to use the AI assistant.');
+    bubble.innerHTML = 'Please connect your backend to use the AI assistant.';
   }
 }
 

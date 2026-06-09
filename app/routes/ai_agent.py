@@ -2,7 +2,6 @@ import json
 import logging
 
 from flask import Blueprint, request, jsonify, Response, stream_with_context
-from flask_jwt_extended import jwt_required, get_jwt_identity
 
 from app.services.supabase import supabase, select, select_one, insert, update, delete, eq
 from app.services.scoring import get_groq_client, score_lead_via_groq
@@ -14,10 +13,12 @@ ai_bp = Blueprint('ai', __name__)
 
 
 @ai_bp.route('/api/ai/chat', methods=['POST'])
-@jwt_required()
 def ai_chat():
     """Streaming AI chat endpoint using Groq SSE."""
-    current_user_id = get_jwt_identity()
+    current_user_id = None
+    # Use default user (ID=1) when no authentication
+    if current_user_id is None:
+        current_user_id = 1
     user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
         return jsonify({'error': 'User not found'}), 404
@@ -72,7 +73,12 @@ def ai_chat():
 
         gmail_query_str = ' '.join(search_terms) if search_terms else None
 
-        maton_key = os.environ.get('MATON_API_KEY', '')
+        # Use LinkedIn-specific API key for LinkedIn requests, otherwise use regular MATON key
+        if is_linkedin_request:
+            maton_key = os.environ.get('LinkedIn_Maton_API_Key', '')
+        else:
+            maton_key = os.environ.get('MATON_API_KEY', '')
+        
         if maton_key:
             try:
                 import base64 as b64
@@ -166,10 +172,12 @@ def ai_chat():
 
 
 @ai_bp.route('/api/ai/generate-email', methods=['POST'])
-@jwt_required()
 def generate_email():
     """Generate a personalized email for a lead."""
-    current_user_id = get_jwt_identity()
+    current_user_id = None
+    # Use default user (ID=1) when no authentication
+    if current_user_id is None:
+        current_user_id = 1
     user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
         return jsonify({'error': 'User not found'}), 404
@@ -342,10 +350,12 @@ def _generate_template_email(lead_data, email_type, user_id, lead_id):
 
 
 @ai_bp.route('/api/ai/score-lead', methods=['POST'])
-@jwt_required()
 def ai_score_lead():
     """Score a lead using AI based on ICP criteria."""
-    current_user_id = get_jwt_identity()
+    current_user_id = None
+    # Use default user (ID=1) when no authentication
+    if current_user_id is None:
+        current_user_id = 1
     user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
         return jsonify({'error': 'User not found'}), 404
@@ -376,11 +386,13 @@ def ai_score_lead():
 
 
 @ai_bp.route('/api/ai/parse-linkedin', methods=['POST'])
-@jwt_required()
 def parse_linkedin_notes():
     """Parse raw LinkedIn activity notes into structured activities using AI.
     Saves parsed people to the LinkedInActivity database."""
-    current_user_id = get_jwt_identity()
+    current_user_id = None
+    # Use default user (ID=1) when no authentication
+    if current_user_id is None:
+        current_user_id = 1
     user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
         return jsonify({'error': 'User not found'}), 404

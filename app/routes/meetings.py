@@ -3,7 +3,6 @@
 import logging
 from datetime import datetime, timezone
 from flask import Blueprint, jsonify, request
-from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.services.maton_calendar import get_events, get_meetings_weekly
 from app.services.supabase import select_one, eq
 
@@ -19,11 +18,13 @@ def _get_user(user_id_str):
 
 
 @meetings_bp.route('/api/meetings/this-week', methods=['GET'])
-@jwt_required()
 def meetings_this_week():
     """Get all meetings for this week (past 3 days + next 7 days)."""
-    current_user_id = get_jwt_identity()
-    user = _get_user(current_user_id)
+    current_user_id = None
+    # Use default user (ID=1) when no authentication
+    if current_user_id is None:
+        current_user_id = 1
+    user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
         return jsonify({'error': 'User not found'}), 404
 
@@ -39,11 +40,13 @@ def meetings_this_week():
 
 
 @meetings_bp.route('/api/meetings/upcoming', methods=['GET'])
-@jwt_required()
 def upcoming_meetings():
     """Get upcoming meetings (next 14 days)."""
-    current_user_id = get_jwt_identity()
-    user = _get_user(current_user_id)
+    current_user_id = None
+    # Use default user (ID=1) when no authentication
+    if current_user_id is None:
+        current_user_id = 1
+    user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
         return jsonify({'error': 'User not found'}), 404
 
@@ -60,11 +63,13 @@ def upcoming_meetings():
 
 
 @meetings_bp.route('/api/meetings/past', methods=['GET'])
-@jwt_required()
 def past_meetings():
     """Get past meetings (last 14 days)."""
-    current_user_id = get_jwt_identity()
-    user = _get_user(current_user_id)
+    current_user_id = None
+    # Use default user (ID=1) when no authentication
+    if current_user_id is None:
+        current_user_id = 1
+    user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
         return jsonify({'error': 'User not found'}), 404
 

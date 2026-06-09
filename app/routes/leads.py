@@ -5,7 +5,6 @@ import logging
 from datetime import datetime, timezone
 
 from flask import Blueprint, request, jsonify, Response
-from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.services.supabase import supabase, select, select_one, insert, update, delete, eq, like, in_
 from app.services.dedup import is_duplicate_lead
 from app.services.scoring import score_lead_via_groq, enrich_lead_via_groq
@@ -51,10 +50,12 @@ def _lead_to_dict(lead):
 
 
 @leads_bp.route('/api/leads', methods=['GET'])
-@jwt_required()
 def list_leads():
-    current_user_id = get_jwt_identity()
-    user = _get_current_user(current_user_id)
+    current_user_id = None
+    # Use default user (ID=1) when no authentication
+    if current_user_id is None:
+        current_user_id = 1
+    user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
         return jsonify({'error': 'User not found'}), 404
 
@@ -146,10 +147,12 @@ def list_leads():
 
 
 @leads_bp.route('/api/leads', methods=['POST'])
-@jwt_required()
 def create_lead():
-    current_user_id = get_jwt_identity()
-    user = _get_current_user(current_user_id)
+    current_user_id = None
+    # Use default user (ID=1) when no authentication
+    if current_user_id is None:
+        current_user_id = 1
+    user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
         return jsonify({'error': 'User not found'}), 404
 
@@ -193,10 +196,12 @@ def create_lead():
 
 
 @leads_bp.route('/api/leads/bulk', methods=['POST'])
-@jwt_required()
 def bulk_create_leads():
-    current_user_id = get_jwt_identity()
-    user = _get_current_user(current_user_id)
+    current_user_id = None
+    # Use default user (ID=1) when no authentication
+    if current_user_id is None:
+        current_user_id = 1
+    user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
         return jsonify({'error': 'User not found'}), 404
 
@@ -250,10 +255,12 @@ def bulk_create_leads():
 
 
 @leads_bp.route('/api/leads/<int:lead_id>', methods=['PUT'])
-@jwt_required()
 def update_lead(lead_id):
-    current_user_id = get_jwt_identity()
-    user = _get_current_user(current_user_id)
+    current_user_id = None
+    # Use default user (ID=1) when no authentication
+    if current_user_id is None:
+        current_user_id = 1
+    user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
         return jsonify({'error': 'User not found'}), 404
 
@@ -287,10 +294,12 @@ def update_lead(lead_id):
 
 
 @leads_bp.route('/api/leads/<int:lead_id>', methods=['GET'])
-@jwt_required()
 def get_lead(lead_id):
-    current_user_id = get_jwt_identity()
-    user = _get_current_user(current_user_id)
+    current_user_id = None
+    # Use default user (ID=1) when no authentication
+    if current_user_id is None:
+        current_user_id = 1
+    user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
         return jsonify({'error': 'User not found'}), 404
     lead = select_one('leads', filters=[eq('id', lead_id), eq('workspace_id', user['workspace_id'])])
@@ -300,10 +309,12 @@ def get_lead(lead_id):
 
 
 @leads_bp.route('/api/leads/<int:lead_id>', methods=['DELETE'])
-@jwt_required()
 def delete_lead(lead_id):
-    current_user_id = get_jwt_identity()
-    user = _get_current_user(current_user_id)
+    current_user_id = None
+    # Use default user (ID=1) when no authentication
+    if current_user_id is None:
+        current_user_id = 1
+    user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
         return jsonify({'error': 'User not found'}), 404
 
@@ -322,10 +333,12 @@ def delete_lead(lead_id):
 
 
 @leads_bp.route('/api/leads/batch-delete', methods=['POST'])
-@jwt_required()
 def batch_delete_leads():
-    current_user_id = get_jwt_identity()
-    user = _get_current_user(current_user_id)
+    current_user_id = None
+    # Use default user (ID=1) when no authentication
+    if current_user_id is None:
+        current_user_id = 1
+    user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
         return jsonify({'error': 'User not found'}), 404
 
@@ -344,11 +357,13 @@ def batch_delete_leads():
 
 
 @leads_bp.route('/api/leads/hunt', methods=['POST'])
-@jwt_required()
 def hunt_leads():
     """Lead hunting endpoint using real data sources (Apollo, Hunter, Serper, Firecrawl)."""
-    current_user_id = get_jwt_identity()
-    user = _get_current_user(current_user_id)
+    current_user_id = None
+    # Use default user (ID=1) when no authentication
+    if current_user_id is None:
+        current_user_id = 1
+    user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
         return jsonify({'error': 'User not found'}), 404
 
@@ -431,10 +446,12 @@ def hunt_leads():
 
 
 @leads_bp.route('/api/leads/enrich', methods=['POST'])
-@jwt_required()
 def enrich_lead():
-    current_user_id = get_jwt_identity()
-    user = _get_current_user(current_user_id)
+    current_user_id = None
+    # Use default user (ID=1) when no authentication
+    if current_user_id is None:
+        current_user_id = 1
+    user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
         return jsonify({'error': 'User not found'}), 404
 
@@ -469,10 +486,12 @@ def enrich_lead():
 
 
 @leads_bp.route('/api/leads/score', methods=['POST'])
-@jwt_required()
 def score_lead():
-    current_user_id = get_jwt_identity()
-    user = _get_current_user(current_user_id)
+    current_user_id = None
+    # Use default user (ID=1) when no authentication
+    if current_user_id is None:
+        current_user_id = 1
+    user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
         return jsonify({'error': 'User not found'}), 404
 
@@ -508,10 +527,12 @@ def score_lead():
 
 
 @leads_bp.route('/api/leads/export', methods=['GET'])
-@jwt_required()
 def export_leads():
-    current_user_id = get_jwt_identity()
-    user = _get_current_user(current_user_id)
+    current_user_id = None
+    # Use default user (ID=1) when no authentication
+    if current_user_id is None:
+        current_user_id = 1
+    user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
         return jsonify({'error': 'User not found'}), 404
 

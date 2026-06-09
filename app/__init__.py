@@ -1,11 +1,9 @@
 import os
 from flask import Flask
-from flask_jwt_extended import JWTManager
 from flask_cors import CORS
+from flask_jwt_extended import JWTManager
 from app.config import config_by_name
 from app.services.supabase import supabase
-
-jwt = JWTManager()
 
 
 def create_app(config_name='dev'):
@@ -16,8 +14,8 @@ def create_app(config_name='dev'):
     config = config_by_name.get(config_name, config_by_name['dev'])
     app.config.from_object(config)
 
-    # Initialize extensions
-    jwt.init_app(app)
+    # Initialize JWT
+    jwt = JWTManager(app)
 
     # Enable CORS for all /api/* routes
     CORS(app, resources={r"/api/*": {"origins": "*"}})
