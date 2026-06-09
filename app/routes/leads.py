@@ -51,9 +51,10 @@ def _lead_to_dict(lead):
 
 @leads_bp.route('/api/leads', methods=['GET'])
 def list_leads():
-    current_user_id = None
-    # Use default user (ID=1) when no authentication
-    if current_user_id is None:
+    current_user_id = request.headers.get('X-User-ID', '1')
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
         current_user_id = 1
     user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
@@ -148,9 +149,10 @@ def list_leads():
 
 @leads_bp.route('/api/leads', methods=['POST'])
 def create_lead():
-    current_user_id = None
-    # Use default user (ID=1) when no authentication
-    if current_user_id is None:
+    current_user_id = request.headers.get('X-User-ID', '1')
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
         current_user_id = 1
     user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
@@ -197,9 +199,10 @@ def create_lead():
 
 @leads_bp.route('/api/leads/bulk', methods=['POST'])
 def bulk_create_leads():
-    current_user_id = None
-    # Use default user (ID=1) when no authentication
-    if current_user_id is None:
+    current_user_id = request.headers.get('X-User-ID', '1')
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
         current_user_id = 1
     user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
@@ -256,9 +259,10 @@ def bulk_create_leads():
 
 @leads_bp.route('/api/leads/<int:lead_id>', methods=['PUT'])
 def update_lead(lead_id):
-    current_user_id = None
-    # Use default user (ID=1) when no authentication
-    if current_user_id is None:
+    current_user_id = request.headers.get('X-User-ID', '1')
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
         current_user_id = 1
     user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
@@ -295,9 +299,10 @@ def update_lead(lead_id):
 
 @leads_bp.route('/api/leads/<int:lead_id>', methods=['GET'])
 def get_lead(lead_id):
-    current_user_id = None
-    # Use default user (ID=1) when no authentication
-    if current_user_id is None:
+    current_user_id = request.headers.get('X-User-ID', '1')
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
         current_user_id = 1
     user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
@@ -310,9 +315,10 @@ def get_lead(lead_id):
 
 @leads_bp.route('/api/leads/<int:lead_id>', methods=['DELETE'])
 def delete_lead(lead_id):
-    current_user_id = None
-    # Use default user (ID=1) when no authentication
-    if current_user_id is None:
+    current_user_id = request.headers.get('X-User-ID', '1')
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
         current_user_id = 1
     user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
@@ -334,9 +340,10 @@ def delete_lead(lead_id):
 
 @leads_bp.route('/api/leads/batch-delete', methods=['POST'])
 def batch_delete_leads():
-    current_user_id = None
-    # Use default user (ID=1) when no authentication
-    if current_user_id is None:
+    current_user_id = request.headers.get('X-User-ID', '1')
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
         current_user_id = 1
     user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
@@ -359,9 +366,10 @@ def batch_delete_leads():
 @leads_bp.route('/api/leads/hunt', methods=['POST'])
 def hunt_leads():
     """Lead hunting endpoint using real data sources (Apollo, Hunter, Serper, Firecrawl)."""
-    current_user_id = None
-    # Use default user (ID=1) when no authentication
-    if current_user_id is None:
+    current_user_id = request.headers.get('X-User-ID', '1')
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
         current_user_id = 1
     user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
@@ -447,9 +455,10 @@ def hunt_leads():
 
 @leads_bp.route('/api/leads/enrich', methods=['POST'])
 def enrich_lead():
-    current_user_id = None
-    # Use default user (ID=1) when no authentication
-    if current_user_id is None:
+    current_user_id = request.headers.get('X-User-ID', '1')
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
         current_user_id = 1
     user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
@@ -487,9 +496,10 @@ def enrich_lead():
 
 @leads_bp.route('/api/leads/score', methods=['POST'])
 def score_lead():
-    current_user_id = None
-    # Use default user (ID=1) when no authentication
-    if current_user_id is None:
+    current_user_id = request.headers.get('X-User-ID', '1')
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
         current_user_id = 1
     user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
@@ -528,9 +538,10 @@ def score_lead():
 
 @leads_bp.route('/api/leads/export', methods=['GET'])
 def export_leads():
-    current_user_id = None
-    # Use default user (ID=1) when no authentication
-    if current_user_id is None:
+    current_user_id = request.headers.get('X-User-ID', '1')
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
         current_user_id = 1
     user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:

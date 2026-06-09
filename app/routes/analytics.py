@@ -13,9 +13,10 @@ def _get_current_user(user_id_str):
 
 @analytics_bp.route('/api/analytics/pipeline', methods=['GET'])
 def pipeline_analytics():
-    current_user_id = None
-    # Use default user (ID=1) when no authentication
-    if current_user_id is None:
+    current_user_id = request.headers.get('X-User-ID', '1')
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
         current_user_id = 1
     user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
@@ -66,9 +67,10 @@ def pipeline_analytics():
 
 @analytics_bp.route('/api/analytics/by-source', methods=['GET'])
 def analytics_by_source():
-    current_user_id = None
-    # Use default user (ID=1) when no authentication
-    if current_user_id is None:
+    current_user_id = request.headers.get('X-User-ID', '1')
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
         current_user_id = 1
     user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:

@@ -31,9 +31,10 @@ def _activity_to_dict(a):
 
 @linkedin_bp.route('/api/linkedin/activities', methods=['GET'])
 def list_activities():
-    current_user_id = None
-    # Use default user (ID=1) when no authentication
-    if current_user_id is None:
+    current_user_id = request.headers.get('X-User-ID', '1')
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
         current_user_id = 1
     user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
@@ -80,9 +81,10 @@ def list_activities():
 
 @linkedin_bp.route('/api/linkedin/activities', methods=['POST'])
 def create_activity():
-    current_user_id = None
-    # Use default user (ID=1) when no authentication
-    if current_user_id is None:
+    current_user_id = request.headers.get('X-User-ID', '1')
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
         current_user_id = 1
     user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
@@ -114,9 +116,10 @@ def create_activity():
 
 @linkedin_bp.route('/api/linkedin/activities/<int:activity_id>', methods=['PUT'])
 def update_activity(activity_id):
-    current_user_id = None
-    # Use default user (ID=1) when no authentication
-    if current_user_id is None:
+    current_user_id = request.headers.get('X-User-ID', '1')
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
         current_user_id = 1
     user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
@@ -149,9 +152,10 @@ def update_activity(activity_id):
 
 @linkedin_bp.route('/api/linkedin/activities/<int:activity_id>', methods=['DELETE'])
 def delete_activity(activity_id):
-    current_user_id = None
-    # Use default user (ID=1) when no authentication
-    if current_user_id is None:
+    current_user_id = request.headers.get('X-User-ID', '1')
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
         current_user_id = 1
     user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
@@ -168,9 +172,10 @@ def delete_activity(activity_id):
 
 @linkedin_bp.route('/api/linkedin/activities/batch-delete', methods=['POST'])
 def batch_delete_activities():
-    current_user_id = None
-    # Use default user (ID=1) when no authentication
-    if current_user_id is None:
+    current_user_id = request.headers.get('X-User-ID', '1')
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
         current_user_id = 1
     user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
@@ -192,9 +197,10 @@ def batch_delete_activities():
 
 @linkedin_bp.route('/api/linkedin/stats', methods=['GET'])
 def get_linkedin_stats():
-    current_user_id = None
-    # Use default user (ID=1) when no authentication
-    if current_user_id is None:
+    current_user_id = request.headers.get('X-User-ID', '1')
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
         current_user_id = 1
     user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:

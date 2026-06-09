@@ -15,9 +15,10 @@ ai_bp = Blueprint('ai', __name__)
 @ai_bp.route('/api/ai/chat', methods=['POST'])
 def ai_chat():
     """Streaming AI chat endpoint using Groq SSE."""
-    current_user_id = None
-    # Use default user (ID=1) when no authentication
-    if current_user_id is None:
+    current_user_id = request.headers.get('X-User-ID', '1')
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
         current_user_id = 1
     user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
@@ -174,9 +175,10 @@ def ai_chat():
 @ai_bp.route('/api/ai/generate-email', methods=['POST'])
 def generate_email():
     """Generate a personalized email for a lead."""
-    current_user_id = None
-    # Use default user (ID=1) when no authentication
-    if current_user_id is None:
+    current_user_id = request.headers.get('X-User-ID', '1')
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
         current_user_id = 1
     user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
@@ -352,9 +354,10 @@ def _generate_template_email(lead_data, email_type, user_id, lead_id):
 @ai_bp.route('/api/ai/score-lead', methods=['POST'])
 def ai_score_lead():
     """Score a lead using AI based on ICP criteria."""
-    current_user_id = None
-    # Use default user (ID=1) when no authentication
-    if current_user_id is None:
+    current_user_id = request.headers.get('X-User-ID', '1')
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
         current_user_id = 1
     user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
@@ -389,9 +392,10 @@ def ai_score_lead():
 def parse_linkedin_notes():
     """Parse raw LinkedIn activity notes into structured activities using AI.
     Saves parsed people to the LinkedInActivity database."""
-    current_user_id = None
-    # Use default user (ID=1) when no authentication
-    if current_user_id is None:
+    current_user_id = request.headers.get('X-User-ID', '1')
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
         current_user_id = 1
     user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
