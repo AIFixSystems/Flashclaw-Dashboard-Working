@@ -1107,6 +1107,12 @@ tr:last-child td{border-bottom:none}
 
 <script>
 const API_BASE = 'https://5000-10d627ea-3d59-4fc1-a555-5c12162efa94.daytonaproxy01.net';
+
+// SDR Configuration - Kathy Roggers
+const SDR_USER_ID = 1;
+const SDR_WORKSPACE_ID = 1;
+const SDR_NAME = 'Kathy Roggers';
+const SDR_EMAIL = 'kathy.roggers@myflashcloud.com';
 let authToken = localStorage.getItem('lhai_token') || 'demo-token-bypass-auth';
 let liStatsCache = {};
 let liFeedCache = [];
@@ -1143,6 +1149,8 @@ function escapeHtml(s) { var d = document.createElement('div'); d.textContent = 
 function getHeaders() {
   var h = { 'Content-Type': 'application/json' };
   if (authToken) h['Authorization'] = 'Bearer ' + authToken;
+  h['X-User-ID'] = SDR_USER_ID;
+  h['X-Workspace-ID'] = SDR_WORKSPACE_ID;
   return h;
 }
 
