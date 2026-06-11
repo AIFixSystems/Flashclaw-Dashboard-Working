@@ -6,6 +6,7 @@ All data is workspace-aware and user-aware via JWT.
 """
 
 import logging
+import os
 from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, jsonify, request
@@ -57,6 +58,12 @@ def _fmt_date(dt):
 def _build_maton_meetings(workspace_id):
     """Fetch upcoming meetings from Google Calendar via Maton."""
     try:
+        # Check if API key is configured
+        maton_key = os.environ.get('MATON_API_KEY', '')
+        if not maton_key:
+            logger.warning("MATON_API_KEY not configured, skipping meetings")
+            return []
+        
         data = get_upcoming_only(days_ahead=2, max_results=10)
         # Map to a simple format for the dashboard
         meetings = []
@@ -76,7 +83,7 @@ def _build_maton_meetings(workspace_id):
             })
         return meetings
     except Exception as e:
-        logger.warning(f'Maton meetings unavailable: {e}')
+        logger.error(f"Failed to fetch Maton meetings: {e}", exc_info=True)
         return []
 
 
