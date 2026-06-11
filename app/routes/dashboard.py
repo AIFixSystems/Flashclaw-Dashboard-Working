@@ -193,26 +193,26 @@ def _build_sdr_profile(user):
     """SDR identity card data — name, role, team, streak, rank."""
     workspace_id = user['workspace_id']
 
-    # Streak: consecutive days with activity
-    today_start = _today_start()
+    # Streak: fetch last 14 days of activity in 2 bulk queries instead of 120 serial ones
     streak = 0
-    check_date = datetime.now(timezone.utc).date()
-    for days_back in range(0, 60):
-        day_start = datetime(check_date.year, check_date.month, check_date.day, tzinfo=timezone.utc) - timedelta(days=days_back)
-        day_end = day_start + timedelta(hours=23, minutes=59, seconds=59)
-        day_start_iso = day_start.isoformat()
-        day_end_iso = day_end.isoformat()
-
-        li_result = supabase.table('linkedin_activities').select('id').eq('workspace_id', workspace_id).eq('user_id', user['id']).gte('created_at', day_start_iso).lte('created_at', day_end_iso).limit(1).execute()
-        had_li = len(li_result.data) > 0
-
-        email_result = supabase.table('email_activities').select('id').eq('workspace_id', workspace_id).eq('user_id', user['id']).gte('created_at', day_start_iso).lte('created_at', day_end_iso).limit(1).execute()
-        had_email = len(email_result.data) > 0
-
-        if had_li or had_email:
-            streak += 1
-        elif days_back > 0:
-            break
+    try:
+        check_date = datetime.now(timezone.utc).date()
+        window_start = (datetime(check_date.year, check_date.month, check_date.day, tzinfo=timezone.utc) - timedelta(days=13)).isoformat()
+        li_bulk = supabase.table('linkedin_activities').select('created_at').eq('workspace_id', workspace_id).eq('user_id', user['id']).gte('created_at', window_start).execute()
+        email_bulk = supabase.table('email_activities').select('created_at').eq('workspace_id', workspace_id).eq('user_id', user['id']).gte('created_at', window_start).execute()
+        active_days = set()
+        for row in (li_bulk.data or []) + (email_bulk.data or []):
+            ts = row.get('created_at', '')
+            if ts:
+                active_days.add(ts[:10])
+        for days_back in range(0, 14):
+            day_key = (check_date - timedelta(days=days_back)).isoformat()
+            if day_key in active_days:
+                streak += 1
+            elif days_back > 0:
+                break
+    except Exception as e:
+        logger.warning(f"Streak calculation failed: {e}")
 
     # Rank based on total leads generated in workspace
     user_leads_result = supabase.table('leads').select('id', count='exact').eq('workspace_id', workspace_id).eq('user_id', user['id']).execute()

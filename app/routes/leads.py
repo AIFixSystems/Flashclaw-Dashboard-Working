@@ -289,10 +289,16 @@ def update_lead(lead_id):
 
     update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
 
-    update('leads', update_data, filters=[eq('id', lead_id)])
+    try:
+        update('leads', update_data, filters=[eq('id', lead_id)])
+    except Exception as e:
+        logger.error(f"Failed to update lead {lead_id}: {e}")
+        return jsonify({'error': 'Failed to update lead'}), 500
 
     # Fetch updated lead
     updated_lead = select_one('leads', filters=[eq('id', lead_id)])
+    if not updated_lead:
+        return jsonify({'error': 'Lead not found after update'}), 404
 
     return jsonify({'lead': _lead_to_dict(updated_lead)})
 

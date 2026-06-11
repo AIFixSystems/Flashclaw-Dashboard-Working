@@ -634,10 +634,13 @@ function logout() {
 function showApp() {
   document.getElementById('login-view').style.display = 'none';
   document.getElementById('app-view').style.display = 'flex';
-  document.getElementById('api-url-display').textContent = API_BASE;
+  var apiUrlEl = document.getElementById('api-url-display');
+  if (apiUrlEl) apiUrlEl.textContent = API_BASE;
   var tok = authToken || '......';
-  document.getElementById('token-display').textContent = tok.length > 20 ? tok.slice(0, 20) + '...' : tok;
-  document.getElementById('sidebar-user').textContent = 'Kathy Roggers';
+  var tokenEl = document.getElementById('token-display');
+  if (tokenEl) tokenEl.textContent = tok.length > 20 ? tok.slice(0, 20) + '...' : tok;
+  var sidebarUser = document.getElementById('sidebar-user');
+  if (sidebarUser) sidebarUser.textContent = 'Kathy Roggers';
   showTab('dashboard');
 }
 
@@ -648,7 +651,16 @@ function showApp() {
     authToken = saved;
     fetch(API_BASE + '/api/admin/system-health', {
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + saved }
-    }).catch(function() {}).then(function() {
+    }).then(function(r) {
+      if (r.ok || r.status === 403 || r.status === 404) {
+        showApp();
+      } else if (r.status === 401) {
+        authToken = null;
+        localStorage.removeItem('lhai_token');
+      } else {
+        showApp();
+      }
+    }).catch(function() {
       showApp();
     });
   }
@@ -1790,19 +1802,6 @@ function updateLiStatus(activityId, newType) {
   });
 }
 
-function deleteLiActivity(activityId) {
-  if (!confirm('Are you sure you want to delete this activity?')) return;
-  api('/api/linkedin/activities/' + activityId, {
-    method: 'DELETE'
-  }).then(function() {
-    signalDataChanged();
-    loadLinkedInTracker();
-  }).catch(function() {
-    signalDataChanged();
-    loadLinkedInTracker();
-  });
-}
-
 function renderLinkedInTracker() {
   var ls = liStatsCache || {};
   document.getElementById('li-stats').innerHTML = [
@@ -1815,7 +1814,8 @@ function renderLinkedInTracker() {
     return '<div class="li-stat-card"><div class="val" style="color:' + s.color + '">' + s.val + '</div><div class="lbl">' + s.label + '</div></div>';
   }).join('');
 
-  var filter = document.getElementById('li-feed-filter').value;
+  var filterEl = document.getElementById('li-feed-filter');
+  var filter = filterEl ? filterEl.value : '';
   var feed = liFeedCache.filter(function(a) {
     var typeMap = {
       connection_request: 'connection_sent', connection_accepted: 'connection_accepted',
@@ -2184,14 +2184,15 @@ function loadAdmin() {
   var healthDot = document.getElementById('health-dot');
   var healthText = document.getElementById('health-text');
   var healthDetails = document.getElementById('health-details');
-      api('/api/admin/system-health').then(function(r) {
-      healthText.textContent = 'All Systems Operational';
-      healthDetails.innerHTML = '<div>API: ✅ Online</div><div>Database: ✅ Connected</div><div>Auth: ✅ Active</div><div>Groq AI: ✅ Available</div><div>Last checked: ' + new Date().toLocaleString() + '</div>';
-    }).catch(function(e) {
-      healthText.textContent = 'System Status Unknown';
-      healthDot.className = 'health-dot health-warn';
-      healthDetails.innerHTML = '<div>API: ⚠️ Unreachable — showing demo</div>';
-    });
+  api('/api/admin/system-health').then(function(r) {
+    healthText.textContent = 'All Systems Operational';
+    healthDetails.innerHTML = '<div>API: ✅ Online</div><div>Database: ✅ Connected</div><div>Auth: ✅ Active</div><div>Groq AI: ✅ Available</div><div>Last checked: ' + new Date().toLocaleString() + '</div>';
+  }).catch(function(e) {
+    healthText.textContent = 'System Status Unknown';
+    if (healthDot) healthDot.className = 'health-dot health-warn';
+    if (healthDetails) healthDetails.innerHTML = '<div>API: ⚠️ Unreachable — showing demo</div>';
+  });
+}
 
 /* === API CONFIG === */
 function copyToken() {
@@ -2219,12 +2220,20 @@ function testConnection() {
   });
 }
 
-/* Delete LI activity */
+/* Delete LI activity — single canonical definition */
 function deleteLiActivity(id) {
-      api('/api/linkedin/activities/' + id, { method: 'DELETE' }).catch(function() {});
-  }
-  liFeedCache = liFeedCache.filter(function(a, i) { return i !== id; });
-  loadLinkedInTracker();
+  if (!confirm('Are you sure you want to delete this activity?')) return;
+  api('/api/linkedin/activities/' + id, { method: 'DELETE' })
+    .then(function() {
+      liFeedCache = liFeedCache.filter(function(a) { return String(a._id) !== String(id); });
+      signalDataChanged();
+      loadLinkedInTracker();
+    })
+    .catch(function(err) {
+      console.error('Failed to delete activity:', err);
+      loadLinkedInTracker();
+    });
+}
 
 function liToggleAll(el) {
   var cbs = document.querySelectorAll('.li-checkbox');
@@ -2246,12 +2255,16 @@ function liDeleteSelected() {
   for (var i = 0; i < cbs.length; i++) ids.push(cbs[i].value);
   if (ids.length === 0) return;
   if (!confirm('Delete ' + ids.length + ' selected activity/activities?')) return;
-      api('/api/linkedin/activities/batch-delete', {
-      method: 'POST',
-      body: JSON.stringify({ ids: ids })
-    }).catch(function() {});
-  }
-  loadLinkedInTracker();
+  api('/api/linkedin/activities/batch-delete', {
+    method: 'POST',
+    body: JSON.stringify({ ids: ids })
+  }).then(function() {
+    signalDataChanged();
+    loadLinkedInTracker();
+  }).catch(function(err) {
+    console.error('Batch delete failed:', err);
+    loadLinkedInTracker();
+  });
 }
 </script>
 
