@@ -27,7 +27,7 @@ def _api_get(path, params=None):
         try:
             req = urllib.request.Request(url)
             req.add_header('Authorization', f'Bearer {MATON_API_KEY}')
-            with urllib.request.urlopen(req, timeout=20) as resp:
+            with urllib.request.urlopen(req, timeout=8) as resp:
                 return json.loads(resp.read().decode())
         except urllib.error.HTTPError as e:
             body = e.read().decode()[:500]
@@ -157,6 +157,37 @@ def get_events(days_back=7, days_ahead=14, max_results=50, calendar_id='primary'
         'upcoming_count': len(upcoming),
         'past': past,
         'past_count': len(past),
+    }
+
+
+def get_upcoming_only(days_ahead=2, max_results=10, calendar_id='primary'):
+    """Fetch only today + N days ahead — minimal window for fast loads."""
+    now = datetime.now(timezone.utc)
+    time_min = now.strftime('%Y-%m-%dT%H:%M:%SZ')
+    time_max = (now + timedelta(days=days_ahead)).replace(
+        hour=23, minute=59, second=59
+    ).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+    params = {
+        'timeMin': time_min,
+        'timeMax': time_max,
+        'singleEvents': 'true',
+        'orderBy': 'startTime',
+        'maxResults': str(max_results),
+    }
+
+    data = _api_get(f'calendars/{calendar_id}/events', params)
+    events = data.get('items', [])
+    parsed = [_parse_event(e) for e in events]
+
+    return {
+        'calendar_name': data.get('summary', ''),
+        'timezone': data.get('timeZone', 'UTC'),
+        'total': len(parsed),
+        'upcoming': parsed,
+        'upcoming_count': len(parsed),
+        'past': [],
+        'past_count': 0,
     }
 
 

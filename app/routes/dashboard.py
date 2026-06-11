@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 from flask import Blueprint, jsonify, request
 
 from app.services.supabase import supabase, select, select_one, insert, update, delete, eq, gte, lte, in_
-from app.services.maton_calendar import get_events
+from app.services.maton_calendar import get_events, get_upcoming_only
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ def _fmt_date(dt):
 def _build_maton_meetings(workspace_id):
     """Fetch upcoming meetings from Google Calendar via Maton."""
     try:
-        data = get_events(days_back=3, days_ahead=7, max_results=50)
+        data = get_upcoming_only(days_ahead=2, max_results=10)
         # Map to a simple format for the dashboard
         meetings = []
         for m in data.get('upcoming', []):
