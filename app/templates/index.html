@@ -1837,7 +1837,18 @@ function renderLinkedInTracker() {
     { val: 'followup_sent', icon: '🔄', label: 'Follow-up' }
   ];
 
-  document.getElementById('li-feed').innerHTML = '<div style="margin-bottom:8px;display:flex;gap:8px;align-items:center"><label style="font-size:12px;color:var(--text-sec);display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="li-select-all" onchange="liToggleAll(this)"> Select All</label><button class="btn-sm btn-danger" onclick="liDeleteSelected()" id="li-delete-selected" style="display:none">🗑️ Delete Selected (<span id="li-selected-count">0</span>)</button></div>' + (feed.length ? ('<div class="table-container" style="overflow-x:auto"><table><thead><tr><th style="padding:8px 10px;font-size:11px;width:30px"></th><th style="padding:8px 10px;font-size:11px">Name</th><th style="padding:8px 10px;font-size:11px">Title</th><th style="padding:8px 10px;font-size:11px">Activity</th><th style="padding:8px 10px;font-size:11px">LinkedIn</th><th style="padding:8px 10px;font-size:11px">Status</th><th style="padding:8px 10px;font-size:11px">Actions</th></tr></thead><tbody>' + feed.map(function(a) {
+  var toolbarHtml =
+    '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm)">' +
+      '<label style="font-size:13px;color:var(--text-sec);display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:500">' +
+        '<input type="checkbox" id="li-select-all" onchange="liToggleAll(this)" style="width:14px;height:14px;accent-color:var(--accent);cursor:pointer"> Select All' +
+      '</label>' +
+      '<span id="li-selected-badge" style="display:none;font-size:12px;padding:2px 10px;border-radius:12px;background:var(--accent-glow);color:var(--accent);font-weight:600">0 selected</span>' +
+      '<div style="flex:1"></div>' +
+      (feed.length ? '<button class="btn-sm btn-danger" onclick="liDeleteAll()" style="opacity:0.7" title="Delete all ' + feed.length + ' activities in current filter">🗑️ Delete All (' + feed.length + ')</button>' : '') +
+      '<button class="btn-sm btn-danger" onclick="liDeleteSelected()" id="li-delete-selected" style="display:none">🗑️ Delete Selected (<span id="li-selected-count">0</span>)</button>' +
+    '</div>';
+
+  document.getElementById('li-feed').innerHTML = toolbarHtml + (feed.length ? ('<div class="table-container" style="overflow-x:auto"><table><thead><tr><th style="padding:8px 10px;font-size:11px;width:30px"></th><th style="padding:8px 10px;font-size:11px">Name</th><th style="padding:8px 10px;font-size:11px">Title</th><th style="padding:8px 10px;font-size:11px">Activity</th><th style="padding:8px 10px;font-size:11px">LinkedIn</th><th style="padding:8px 10px;font-size:11px">Status</th><th style="padding:8px 10px;font-size:11px">Actions</th></tr></thead><tbody>' + feed.map(function(a) {
     var curIcon = '+';
     var curLabel = (a.type || '').replace(/_/g, ' ');
     for (var i = 0; i < statusOptions.length; i++) {
@@ -2245,8 +2256,15 @@ function liUpdateSelected() {
   var cbs = document.querySelectorAll('.li-checkbox:checked');
   var count = cbs.length;
   var btn = document.getElementById('li-delete-selected');
-  document.getElementById('li-selected-count').textContent = count;
-  btn.style.display = count > 0 ? 'inline-block' : 'none';
+  var countEl = document.getElementById('li-selected-count');
+  var badge = document.getElementById('li-selected-badge');
+  if (countEl) countEl.textContent = count;
+  if (badge) { badge.textContent = count + ' selected'; badge.style.display = count > 0 ? 'inline-block' : 'none'; }
+  if (btn) btn.style.display = count > 0 ? 'inline-block' : 'none';
+  // Sync select-all checkbox state
+  var all = document.querySelectorAll('.li-checkbox');
+  var selectAllEl = document.getElementById('li-select-all');
+  if (selectAllEl && all.length > 0) selectAllEl.indeterminate = count > 0 && count < all.length;
 }
 
 function liDeleteSelected() {
@@ -2254,15 +2272,31 @@ function liDeleteSelected() {
   var ids = [];
   for (var i = 0; i < cbs.length; i++) ids.push(cbs[i].value);
   if (ids.length === 0) return;
-  if (!confirm('Delete ' + ids.length + ' selected activity/activities?')) return;
+  if (!confirm('Permanently delete ' + ids.length + ' selected activit' + (ids.length === 1 ? 'y' : 'ies') + ' from Supabase?')) return;
+  _liExecuteBatchDelete(ids);
+}
+
+function liDeleteAll() {
+  var allIds = [];
+  document.querySelectorAll('.li-checkbox').forEach(function(cb) { allIds.push(cb.value); });
+  if (allIds.length === 0) return;
+  if (!confirm('Permanently delete ALL ' + allIds.length + ' activit' + (allIds.length === 1 ? 'y' : 'ies') + ' from Supabase? This cannot be undone.')) return;
+  _liExecuteBatchDelete(allIds);
+}
+
+function _liExecuteBatchDelete(ids) {
+  var feedEl = document.getElementById('li-feed');
+  if (feedEl) feedEl.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted)"><span class="spinner"></span> Deleting ' + ids.length + ' activities...</div>';
   api('/api/linkedin/activities/batch-delete', {
     method: 'POST',
     body: JSON.stringify({ ids: ids })
-  }).then(function() {
+  }).then(function(r) {
+    liFeedCache = liFeedCache.filter(function(a) { return ids.indexOf(String(a._id)) === -1; });
     signalDataChanged();
     loadLinkedInTracker();
   }).catch(function(err) {
     console.error('Batch delete failed:', err);
+    alert('Delete failed: ' + (err && err.message ? err.message : 'Check connection'));
     loadLinkedInTracker();
   });
 }
