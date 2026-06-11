@@ -191,61 +191,80 @@ def _build_stats(workspace_id, user_id):
 
 def _build_sdr_profile(user):
     """SDR identity card data — name, role, team, streak, rank."""
-    workspace_id = user['workspace_id']
-
-    # Streak: fetch last 14 days of activity in 2 bulk queries instead of 120 serial ones
-    streak = 0
     try:
-        check_date = datetime.now(timezone.utc).date()
-        window_start = (datetime(check_date.year, check_date.month, check_date.day, tzinfo=timezone.utc) - timedelta(days=13)).isoformat()
-        li_bulk = supabase.table('linkedin_activities').select('created_at').eq('workspace_id', workspace_id).eq('user_id', user['id']).gte('created_at', window_start).execute()
-        email_bulk = supabase.table('email_activities').select('created_at').eq('workspace_id', workspace_id).eq('user_id', user['id']).gte('created_at', window_start).execute()
-        active_days = set()
-        for row in (li_bulk.data or []) + (email_bulk.data or []):
-            ts = row.get('created_at', '')
-            if ts:
-                active_days.add(ts[:10])
-        for days_back in range(0, 14):
-            day_key = (check_date - timedelta(days=days_back)).isoformat()
-            if day_key in active_days:
-                streak += 1
-            elif days_back > 0:
-                break
+        workspace_id = user.get('workspace_id', 1)
+
+        # Streak: fetch last 14 days of activity in 2 bulk queries instead of 120 serial ones
+        streak = 0
+        try:
+            check_date = datetime.now(timezone.utc).date()
+            window_start = (datetime(check_date.year, check_date.month, check_date.day, tzinfo=timezone.utc) - timedelta(days=13)).isoformat()
+            li_bulk = supabase.table('linkedin_activities').select('created_at').eq('workspace_id', workspace_id).eq('user_id', user['id']).gte('created_at', window_start).execute()
+            email_bulk = supabase.table('email_activities').select('created_at').eq('workspace_id', workspace_id).eq('user_id', user['id']).gte('created_at', window_start).execute()
+            active_days = set()
+            for row in (li_bulk.data or []) + (email_bulk.data or []):
+                ts = row.get('created_at', '')
+                if ts:
+                    active_days.add(ts[:10])
+            for days_back in range(0, 14):
+                day_key = (check_date - timedelta(days=days_back)).isoformat()
+                if day_key in active_days:
+                    streak += 1
+                elif days_back > 0:
+                    break
+        except Exception as e:
+            logger.warning(f"Streak calculation failed: {e}")
+
+        # Rank based on total leads generated in workspace
+        user_leads = 0
+        try:
+            user_leads_result = supabase.table('leads').select('id', count='exact').eq('workspace_id', workspace_id).eq('user_id', user['id']).execute()
+            user_leads = int(user_leads_result.count) if hasattr(user_leads_result, 'count') else len(user_leads_result.data)
+        except Exception as e:
+            logger.warning(f"User leads count failed: {e}")
+
+        if user_leads >= 50:
+            rank = 'Prospector 🏆'
+        elif user_leads >= 20:
+            rank = 'Hunter 💪'
+        elif user_leads >= 10:
+            rank = 'Scout 🎯'
+        elif user_leads >= 1:
+            rank = 'Rookie 🚀'
+        else:
+            rank = 'New Recruit 🌱'
+
+        # Team members (same workspace, role=sdr)
+        team_members = 0
+        try:
+            team_result = supabase.table('users').select('id', count='exact').eq('workspace_id', workspace_id).eq('role', 'sdr').execute()
+            team_members = int(team_result.count) if hasattr(team_result, 'count') else len(team_result.data)
+        except Exception as e:
+            logger.warning(f"Team members count failed: {e}")
+
+        return {
+            'name': user.get('name', 'Guest User'),
+            'email': user.get('email', 'guest@example.com'),
+            'role': user.get('role', 'sdr').capitalize(),
+            'avatar': user.get('avatar') or user.get('name', 'GU')[:2].upper(),
+            'team_size': team_members + 1,
+            'streak': streak,
+            'rank': rank,
+            'leads_generated': user_leads,
+        }
     except Exception as e:
-        logger.warning(f"Streak calculation failed: {e}")
-
-    # Rank based on total leads generated in workspace
-    user_leads_result = supabase.table('leads').select('id', count='exact').eq('workspace_id', workspace_id).eq('user_id', user['id']).execute()
-    user_leads = int(user_leads_result.count) if hasattr(user_leads_result, 'count') else len(user_leads_result.data)
-
-    total_workspace_leads_result = supabase.table('leads').select('id', count='exact').eq('workspace_id', workspace_id).execute()
-    total_workspace_leads = int(total_workspace_leads_result.count) if hasattr(total_workspace_leads_result, 'count') else len(total_workspace_leads_result.data)
-
-    if user_leads >= 50:
-        rank = 'Prospector 🏆'
-    elif user_leads >= 20:
-        rank = 'Hunter 💪'
-    elif user_leads >= 10:
-        rank = 'Scout 🎯'
-    elif user_leads >= 1:
-        rank = 'Rookie 🚀'
-    else:
-        rank = 'New Recruit 🌱'
-
-    # Team members (same workspace, role=sdr)
-    team_result = supabase.table('users').select('id', count='exact').eq('workspace_id', workspace_id).eq('role', 'sdr').execute()
-    team_members = int(team_result.count) if hasattr(team_result, 'count') else len(team_result.data)
-
-    return {
-        'name': user['name'],
-        'email': user['email'],
-        'role': user['role'].capitalize(),
-        'avatar': user.get('avatar') or user['name'][:2].upper(),
-        'team_size': team_members + 1,
-        'streak': streak,
-        'rank': rank,
-        'leads_generated': user_leads,
-    }
+        logger.error(f"Failed to build SDR profile: {e}")
+        # Return minimal profile on error
+        return {
+            'name': user.get('name', 'Guest User'),
+            'email': user.get('email', 'guest@example.com'),
+            'role': 'Sdr',
+            'avatar': 'GU',
+            'team_size': 1,
+            'streak': 0,
+            'rank': 'New Recruit 🌱',
+            'leads_generated': 0,
+        }
 
 
 # ── Today's Work Queue ──────────────────────────────────────────────
