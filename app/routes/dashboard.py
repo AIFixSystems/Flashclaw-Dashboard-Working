@@ -820,6 +820,19 @@ def _seed_dashboard_data(user):
 @dashboard_bp.route('/api/dashboard/summary', methods=['GET'])
 def dashboard_summary():
     """Main dashboard summary endpoint — all data in one response."""
+    # Initialize with empty defaults
+    response_data = {
+        'stats': {},
+        'sdr_profile': {},
+        'today_queue': {},
+        'recent_activities': [],
+        'source_performance': [],
+        'pipeline_snapshot': {},
+        'ai_recommendations': [],
+        'maton_meetings': [],
+        'errors': []
+    }
+    
     try:
         current_user_id = request.headers.get('X-User-ID', '1')
         try:
@@ -833,6 +846,7 @@ def dashboard_summary():
             user = select_one('users', filters=[eq('id', int(current_user_id))])
         except Exception as e:
             logger.warning(f"User lookup failed: {e}")
+            response_data['errors'].append(f"User lookup: {str(e)}")
         
         if not user:
             # Create a default user context for unauthenticated requests
@@ -846,73 +860,94 @@ def dashboard_summary():
 
         workspace_id = user.get('workspace_id', 1)
 
-        # Build each section independently so one failure doesn't crash everything
-        stats = {}
-        sdr_profile = {}
-        today_queue = {}
-        recent_activities = []
-        source_performance = []
-        pipeline_snapshot = {}
-        ai_recommendations = []
-        maton_meetings = []
-
-        for fname, fargs in [
-            ('stats', lambda: _build_stats(workspace_id, user['id'])),
-            ('sdr_profile', lambda: _build_sdr_profile(user)),
-            ('today_queue', lambda: _build_today_queue(workspace_id, user['id'])),
-            ('recent_activities', lambda: _build_recent_activities(workspace_id, user['id'])),
-            ('source_performance', lambda: _build_source_performance(workspace_id)),
-            ('pipeline_snapshot', lambda: _build_pipeline_snapshot(workspace_id)),
-            ('ai_recommendations', lambda: _build_ai_recommendations(workspace_id, user['id'], stats, today_queue)),
-        ]:
-            try:
-                result = fargs()
-                if fname == 'stats' and isinstance(result, dict):
-                    stats = result
-                elif fname == 'sdr_profile' and isinstance(result, dict):
-                    sdr_profile = result
-                elif fname == 'today_queue' and isinstance(result, dict):
-                    today_queue = result
-                elif fname == 'recent_activities' and isinstance(result, list):
-                    recent_activities = result
-                elif fname == 'source_performance' and isinstance(result, list):
-                    source_performance = result
-                elif fname == 'pipeline_snapshot' and isinstance(result, dict):
-                    pipeline_snapshot = result
-                elif fname == 'ai_recommendations' and isinstance(result, list):
-                    ai_recommendations = result
-            except Exception as e:
-                logger.error(f'Failed to build {fname}: {e}', exc_info=True)
-
-        # Get Maton meetings with timeout
+        # Build stats
         try:
-            import threading
-            maton_result = []
-            def _fetch_maton():
-                try:
-                    maton_result.append(_build_maton_meetings(workspace_id))
-                except Exception:
-                    pass
-            t = threading.Thread(target=_fetch_maton)
-            t.start()
-            t.join(timeout=8)
-            maton_meetings = maton_result[0] if maton_result else []
+            response_data['stats'] = _build_stats(workspace_id, user['id'])
         except Exception as e:
-            logger.error(f"Maton meetings failed: {e}")
+            logger.error(f'Stats failed: {e}', exc_info=True)
+            response_data['errors'].append(f"Stats: {str(e)}")
+            response_data['stats'] = {}
 
-        return jsonify({
-            'stats': stats,
-            'sdr_profile': sdr_profile,
-            'today_queue': today_queue,
-            'recent_activities': recent_activities,
-            'source_performance': source_performance,
-            'pipeline_snapshot': pipeline_snapshot,
-            'ai_recommendations': ai_recommendations,
-            'maton_meetings': maton_meetings,
-        })
+        # Build SDR profile
+        try:
+            response_data['sdr_profile'] = _build_sdr_profile(user)
+        except Exception as e:
+            logger.error(f'SDR profile failed: {e}', exc_info=True)
+            response_data['errors'].append(f"SDR profile: {str(e)}")
+            response_data['sdr_profile'] = {
+                'name': 'Guest User',
+                'email': 'guest@example.com',
+                'role': 'Sdr',
+                'avatar': 'GU',
+                'team_size': 1,
+                'streak': 0,
+                'rank': 'New Recruit 🌱',
+                'leads_generated': 0
+            }
+
+        # Build today queue
+        try:
+            response_data['today_queue'] = _build_today_queue(workspace_id, user['id'])
+        except Exception as e:
+            logger.error(f'Today queue failed: {e}', exc_info=True)
+            response_data['errors'].append(f"Today queue: {str(e)}")
+            response_data['today_queue'] = {
+                'follow_ups_due': 0,
+                'positive_replies_needing_response': 0,
+                'meetings_today': 0,
+                'leads_needing_enrichment': 0
+            }
+
+        # Build recent activities
+        try:
+            response_data['recent_activities'] = _build_recent_activities(workspace_id, user['id'])
+        except Exception as e:
+            logger.error(f'Recent activities failed: {e}', exc_info=True)
+            response_data['errors'].append(f"Recent activities: {str(e)}")
+            response_data['recent_activities'] = []
+
+        # Build source performance
+        try:
+            response_data['source_performance'] = _build_source_performance(workspace_id)
+        except Exception as e:
+            logger.error(f'Source performance failed: {e}', exc_info=True)
+            response_data['errors'].append(f"Source performance: {str(e)}")
+            response_data['source_performance'] = []
+
+        # Build pipeline snapshot
+        try:
+            response_data['pipeline_snapshot'] = _build_pipeline_snapshot(workspace_id)
+        except Exception as e:
+            logger.error(f'Pipeline snapshot failed: {e}', exc_info=True)
+            response_data['errors'].append(f"Pipeline snapshot: {str(e)}")
+            response_data['pipeline_snapshot'] = {}
+
+        # Build AI recommendations
+        try:
+            response_data['ai_recommendations'] = _build_ai_recommendations(
+                workspace_id, 
+                user['id'], 
+                response_data['stats'], 
+                response_data['today_queue']
+            )
+        except Exception as e:
+            logger.error(f'AI recommendations failed: {e}', exc_info=True)
+            response_data['errors'].append(f"AI recommendations: {str(e)}")
+            response_data['ai_recommendations'] = []
+
+        # Build Maton meetings - skip if fails
+        try:
+            response_data['maton_meetings'] = _build_maton_meetings(workspace_id)
+        except Exception as e:
+            logger.error(f'Maton meetings failed: {e}', exc_info=True)
+            response_data['errors'].append(f"Maton meetings: {str(e)}")
+            response_data['maton_meetings'] = []
+
+        return jsonify(response_data), 200
+
     except Exception as e:
-        logger.error(f"Dashboard summary endpoint failed: {e}", exc_info=True)
-        # Return minimal response instead of crashing
+        logger.error(f"Dashboard summary endpoint crashed: {e}", exc_info=True)
+        # Return error details for debugging
         return jsonify({
             'stats': {},
             'sdr_profile': {'name': 'Guest User', 'email': 'guest@example.com', 'role': 'Sdr', 'avatar': 'GU', 'team_size': 1, 'streak': 0, 'rank': 'New Recruit 🌱', 'leads_generated': 0},
@@ -922,5 +957,6 @@ def dashboard_summary():
             'pipeline_snapshot': {},
             'ai_recommendations': [],
             'maton_meetings': [],
-            'error': str(e)
+            'errors': [f"Critical error: {str(e)}"],
+            'error_type': type(e).__name__
         }), 200
