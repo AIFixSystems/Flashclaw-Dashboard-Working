@@ -495,14 +495,12 @@ tr:last-child td{border-bottom:none}
     <div class="nav-section">Main</div>
     <div class="nav-item active" onclick="showTab('dashboard')"><span class="nav-icon">📊</span><span>Dashboard</span></div>
     <div class="nav-item" onclick="showTab('lead-hunter')"><span class="nav-icon">🎯</span><span>Lead Hunter</span></div>
-    <div class="nav-item" onclick="showTab('leads')"><span class="nav-icon">👥</span><span>Leads Database</span></div>
-    <div class="nav-item" onclick="showTab('email-gen')"><span class="nav-icon">✉️</span><span>Email Generator</span></div>
-    <div class="nav-item" onclick="showTab('linkedin-tracker')"><span class="nav-icon">🔗</span><span>LinkedIn Tracker</span></div>
-    <div class="nav-item" onclick="showTab('hubspot')"><span class="nav-icon">🔄</span><span>Kathy Roggers Pipeline</span></div>
+    <div class="nav-item" onclick="showTab('leads')"><span class="nav-icon">👥</span><span>Leads</span></div>
+    <div class="nav-item" onclick="showTab('analytics')"><span class="nav-icon">📊</span><span>Analytics</span></div>
+    <div class="nav-item" onclick="showTab('linkedin')"><span class="nav-icon">💼</span><span>LinkedIn</span></div>
 
 
     <div class="nav-section">Intelligence</div>
-    <div class="nav-item" onclick="showTab('meetings')"><span class="nav-icon">📅</span><span>Meetings</span></div>
     <div class="nav-item" onclick="showTab('ai-agent')"><span class="nav-icon">🤖</span><span>AI Agent</span></div>
     <div class="nav-item" onclick="showTab('analytics')"><span class="nav-icon">📈</span><span>Analytics</span></div>
 
@@ -540,7 +538,6 @@ tr:last-child td{border-bottom:none}
 {% include 'tabs/ai_agent.html' %}
 {% include 'tabs/linkedin_tracker.html' %}
 {% include 'tabs/hubspot.html' %}
-{% include 'tabs/meetings.html' %}
 {% include 'tabs/analytics.html' %}
 {% include 'tabs/sdr_activity.html' %}
 {% include 'tabs/integrations.html' %}
@@ -581,7 +578,6 @@ const pageTitles = {
   'api-config': ['API Config', 'Keys & model settings'],
   'admin': ['Admin Panel', 'Team & system management'],
   'hubspot': ['Kathy Roggers', 'Deal activity'],
-  'meetings': ['Meetings', 'Google Calendar — schedule & attendees'],
 };
 
 function capitalize(s) { return s ? s.replace(/_/g,' ').replace(/\b\w/g,function(c){return c.toUpperCase()}) : ''; }
@@ -709,107 +705,12 @@ function showTab(name) {
   if (name === 'activity') loadActivity('weekly');
   if (name === 'admin') loadAdmin();
   if (name === 'hubspot') loadHubSpot();
-  if (name === 'meetings') loadMeetings();
 }
 
 /** HubSpot tab — load owner pipeline from API */
 var HS_DATA = {};
 var HS_CURRENT_OWNER = '555925314';  // Kathy Roggers
 
-function loadMeetings() {
-  var mtgList = document.getElementById('mtg-list');
-  mtgList.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)"><span class="spinner"></span> Loading meetings...</div>';
-
-  api('/api/dashboard/summary').then(function(d) {
-    var meetings = d.maton_meetings || [];
-    if (meetings.length === 0) {
-      mtgList.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">📭 No upcoming meetings found. Check your Google Calendar.</div>';
-      return;
-    }
-
-    meetings.sort(function(a,b) { return (a.start || '').localeCompare(b.start || ''); });
-
-    var now = new Date();
-    var todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    var todayEnd = new Date(todayStart.getTime() + 86400000);
-    var todayCount = 0;
-    var uniqueAttendees = {};
-
-    meetings.forEach(function(m) {
-      var start = new Date(m.start);
-      if (!isNaN(start.getTime()) && start >= todayStart && start < todayEnd) todayCount++;
-      (m.attendees || []).forEach(function(a) {
-        if (a.email) uniqueAttendees[a.email] = a.name || a.email;
-      });
-    });
-
-    var pastCount = d.stats && d.stats.meetings_booked ? d.stats.meetings_booked : 8;
-
-    document.getElementById('mtg-upcoming').textContent = meetings.length;
-    document.getElementById('mtg-today').textContent = todayCount;
-    document.getElementById('mtg-past').textContent = pastCount;
-    document.getElementById('mtg-attendees').textContent = Object.keys(uniqueAttendees).length;
-
-    // Group meetings by date
-    var groups = {};
-    meetings.forEach(function(m) {
-      var dateKey = m.start ? m.start.substring(0,10) : 'unknown';
-      if (!groups[dateKey]) groups[dateKey] = [];
-      groups[dateKey].push(m);
-    });
-
-    var html = '';
-    Object.keys(groups).sort().forEach(function(dateKey) {
-      var day = new Date(dateKey + 'T00:00:00');
-      var dayStr = day.toLocaleDateString('en-US', { weekday:'long', month:'short', day:'numeric' });
-      var isToday = dateKey === now.toISOString().substring(0,10);
-
-      html += '<div style="margin-bottom:16px">';
-      html += '<div style="font-size:12px;font-weight:600;color:var(--text);padding-bottom:6px;margin-bottom:8px;border-bottom:1px solid var(--border)">' + dayStr + (isToday ? ' <span style="font-size:9px;background:var(--success);color:#fff;padding:1px 6px;border-radius:8px;margin-left:4px">Today</span>' : '') + '</div>';
-
-      groups[dateKey].forEach(function(m) {
-        var startTime = '';
-        if (m.start) {
-          try { startTime = new Date(m.start).toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' }); } catch(e) { startTime = m.start.substring(11,16); }
-        }
-        var endTime = '';
-        if (m.end) {
-          try { endTime = new Date(m.end).toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' }); } catch(e) { endTime = m.end.substring(11,16); }
-        }
-
-        var attendeePills = (m.attendees || []).slice(0,4).map(function(a) {
-          var colors = { accepted:'var(--success)', declined:'var(--danger)', tentative:'var(--warning)', needsAction:'var(--text-muted)' };
-          var bg = { accepted:'rgba(62,207,142,0.12)', declined:'rgba(245,72,90,0.12)', tentative:'rgba(245,166,35,0.12)', needsAction:'rgba(90,95,120,0.12)' };
-          var dot = colors[a.status] || 'var(--text-muted)';
-          var bkg = bg[a.status] || 'rgba(90,95,120,0.12)';
-          return '<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:2px 8px;border-radius:10px;background:' + bkg + ';color:var(--text-sec);white-space:nowrap">' +
-            '<span style="width:5px;height:5px;border-radius:50%;background:' + dot + '"></span>' +
-            escapeHtml(a.name || a.email || '?') +
-            '</span>';
-        }).join('');
-
-        if ((m.attendees || []).length > 4) {
-          attendeePills += '<span style="font-size:9px;color:var(--text-muted)">+' + (m.attendees.length - 4) + ' more</span>';
-        }
-
-        html += '<div class="meeting-card"' + (isToday ? ' style="border-left-color:var(--success)"' : '') + '>' +
-          '<div class="mc-title">' + escapeHtml(m.title) + '</div>' +
-          '<div class="mc-meta" style="margin-top:3px">' +
-            '<span>🕐 ' + startTime + (endTime ? ' - ' + endTime : '') + '</span>' +
-            (m.company ? '<span>🏢 ' + escapeHtml(m.company) + '</span>' : '') +
-          '</div>' +
-          (m.conference_link ? '<div style="margin-top:5px"><a href="' + escapeHtml(m.conference_link) + '" target="_blank" class="mc-link" style="font-size:10px;background:rgba(124,109,250,0.1);padding:2px 8px;border-radius:10px;display:inline-flex;align-items:center;gap:4px">🎥 Join</a></div>' : '') +
-          (attendeePills ? '<div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap;align-items:center">' + attendeePills + '</div>' : '') +
-        '</div>';
-      });
-      html += '</div>';
-    });
-
-    mtgList.innerHTML = html;
-  }).catch(function(err) {
-    mtgList.innerHTML = '<div style="text-align:center;padding:40px;color:var(--danger)">⚠️ Failed to load meetings. ' + (err && err.message ? err.message : 'Check API connection.') + '</div>';
-  });
-}
 
 function loadHubSpot() {
   var grid = document.getElementById('hs-grid');
@@ -1754,7 +1655,6 @@ function refreshAllTabs() {
         else if (name === 'analytics') loadAnalytics();
         else if (name === 'leads') loadLeads();
         else if (name === 'hubspot') loadHubSpot();
-        else if (name === 'meetings') loadMeetings();
         else if (name === 'activity') loadActivity('weekly');
       }
     }
