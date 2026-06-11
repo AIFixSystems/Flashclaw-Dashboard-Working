@@ -272,67 +272,73 @@ def _build_sdr_profile(user):
 
 def _build_today_queue(workspace_id, user_id):
     """Follow-ups due, positive replies needing response, meetings today, leads needing enrichment."""
-    today_start_iso = _today_start().isoformat()
-    today_end_iso = _today_end().isoformat()
-
-    # Follow-ups due: leads with status 'contacted' or 'replied'
-    follow_ups_result = supabase.table('leads').select('id', count='exact').eq('workspace_id', workspace_id).eq('user_id', user_id).in_('status', ['contacted', 'replied']).execute()
-    follow_ups_due = int(follow_ups_result.count) if hasattr(follow_ups_result, 'count') else len(follow_ups_result.data)
-
-    # Positive replies needing response
-    positive_emails_result = supabase.table('email_activities').select('*').eq('workspace_id', workspace_id).eq('user_id', user_id).eq('reply_sentiment', 'positive').not_.is_('replied_at', 'null').execute()
-    positive_emails = positive_emails_result.data
-
-    needs_response = 0
-    for email in positive_emails:
-        replied_at = email.get('replied_at')
-        # Look for a sent email after this reply
-        if replied_at:
-            responded_result = supabase.table('email_activities').select('id').eq('workspace_id', workspace_id).eq('user_id', user_id).eq('lead_id', email.get('lead_id')).eq('status', 'sent').gt('sent_at', replied_at).limit(1).execute()
-            if len(responded_result.data) == 0:
-                needs_response += 1
-
-    # Also check LinkedInActivity for interested
-    interested_result = supabase.table('linkedin_activities').select('id').eq('workspace_id', workspace_id).eq('user_id', user_id).eq('activity_type', 'interested').execute()
-    needs_response += len(interested_result.data)
-
-    # Meetings today — from DB and Maton Calendar
-    meetings_today_db = 0
     try:
-        meetings_today_result = supabase.table('meetings').select('id', count='exact').eq('workspace_id', workspace_id).eq('user_id', user_id).eq('status', 'scheduled').gte('scheduled_at', today_start_iso).lte('scheduled_at', today_end_iso).execute()
-        meetings_today_db = int(meetings_today_result.count) if hasattr(meetings_today_result, 'count') else len(meetings_today_result.data)
-    except Exception:
-        pass
+        today_start_iso = _today_start().isoformat()
+        today_end_iso = _today_end().isoformat()
 
-    # Also count from Maton Calendar (with timeout)
-    meetings_today_maton = 0
-    import threading as _mt
-    _mt_result = []
-    def _fetch_mtg_today():
+        # Follow-ups due: leads with status 'contacted' or 'replied'
+        follow_ups_due = 0
         try:
-            _d = get_events(days_back=0, days_ahead=1, max_results=50)
-            _mt_result.append(_d)
-        except Exception:
-            pass
-    _t = _mt.Thread(target=_fetch_mtg_today)
-    _t.start()
-    _t.join(timeout=5)
-    if _mt_result:
-        for m in _mt_result[0].get('upcoming', []):
-            if m.get('start', '').startswith(today_start_iso[:10]):
-                meetings_today_maton += 1
+            follow_ups_result = supabase.table('leads').select('id', count='exact').eq('workspace_id', workspace_id).eq('user_id', user_id).in_('status', ['contacted', 'replied']).execute()
+            follow_ups_due = int(follow_ups_result.count) if hasattr(follow_ups_result, 'count') else len(follow_ups_result.data)
+        except Exception as e:
+            logger.warning(f"Follow-ups query failed: {e}")
 
-    meetings_today = max(meetings_today_db, meetings_today_maton)
-    # Leads needing enrichment (no enriched_at, score < 50)
-    needs_enrichment_result = supabase.table('leads').select('id', count='exact').eq('workspace_id', workspace_id).is_('enriched_at', 'null').lt('lead_score', 50).execute()
-    needs_enrichment = int(needs_enrichment_result.count) if hasattr(needs_enrichment_result, 'count') else len(needs_enrichment_result.data)
+        # Positive replies needing response
+        needs_response = 0
+        try:
+            positive_emails_result = supabase.table('email_activities').select('*').eq('workspace_id', workspace_id).eq('user_id', user_id).eq('reply_sentiment', 'positive').not_.is_('replied_at', 'null').execute()
+            positive_emails = positive_emails_result.data
 
-    return {
-        'follow_ups_due': follow_ups_due,
-        'positive_replies_needing_response': needs_response,
-        'meetings_today': meetings_today,
-        'leads_needing_enrichment': needs_enrichment,
-    }
+            for email in positive_emails:
+                replied_at = email.get('replied_at')
+                if replied_at:
+                    try:
+                        responded_result = supabase.table('email_activities').select('id').eq('workspace_id', workspace_id).eq('user_id', user_id).eq('lead_id', email.get('lead_id')).eq('status', 'sent').gt('sent_at', replied_at).limit(1).execute()
+                        if len(responded_result.data) == 0:
+                            needs_response += 1
+                    except Exception:
+                        pass
+        except Exception as e:
+            logger.warning(f"Positive replies query failed: {e}")
+
+        # Also check LinkedInActivity for interested
+        try:
+            interested_result = supabase.table('linkedin_activities').select('id').eq('workspace_id', workspace_id).eq('user_id', user_id).eq('activity_type', 'interested').execute()
+            needs_response += len(interested_result.data)
+        except Exception as e:
+            logger.warning(f"LinkedIn interested query failed: {e}")
+
+        # Meetings today — from DB and Maton Calendar
+        meetings_today = 0
+        try:
+            meetings_today_result = supabase.table('meetings').select('id', count='exact').eq('workspace_id', workspace_id).eq('user_id', user_id).eq('status', 'scheduled').gte('scheduled_at', today_start_iso).lte('scheduled_at', today_end_iso).execute()
+            meetings_today = int(meetings_today_result.count) if hasattr(meetings_today_result, 'count') else len(meetings_today_result.data)
+        except Exception as e:
+            logger.warning(f"Meetings today query failed: {e}")
+
+        # Leads needing enrichment
+        needs_enrichment = 0
+        try:
+            needs_enrichment_result = supabase.table('leads').select('id', count='exact').eq('workspace_id', workspace_id).is_('enriched_at', 'null').lt('lead_score', 50).execute()
+            needs_enrichment = int(needs_enrichment_result.count) if hasattr(needs_enrichment_result, 'count') else len(needs_enrichment_result.data)
+        except Exception as e:
+            logger.warning(f"Needs enrichment query failed: {e}")
+
+        return {
+            'follow_ups_due': follow_ups_due,
+            'positive_replies_needing_response': needs_response,
+            'meetings_today': meetings_today,
+            'leads_needing_enrichment': needs_enrichment,
+        }
+    except Exception as e:
+        logger.error(f"Failed to build today queue: {e}")
+        return {
+            'follow_ups_due': 0,
+            'positive_replies_needing_response': 0,
+            'meetings_today': 0,
+            'leads_needing_enrichment': 0,
+        }
 
 
 # ── Activity Timeline ───────────────────────────────────────────────
@@ -807,90 +813,107 @@ def _seed_dashboard_data(user):
 @dashboard_bp.route('/api/dashboard/summary', methods=['GET'])
 def dashboard_summary():
     """Main dashboard summary endpoint — all data in one response."""
-    current_user_id = request.headers.get('X-User-ID', '1')
     try:
-        current_user_id = int(current_user_id)
-    except (ValueError, TypeError):
-        current_user_id = 1
-    
-    # Make user check optional - allow unauthenticated access
-    user = select_one('users', filters=[eq('id', int(current_user_id))])
-    if not user:
-        # Create a default user context for unauthenticated requests
-        user = {
-            'id': current_user_id,
-            'name': 'Guest User',
-            'workspace_id': 1,
-            'email': 'guest@example.com',
-            'role': 'sdr'
-        }
-
-    workspace_id = user['workspace_id']
-
-    # Seed demo data on first run if empty
-    try:
-        _seed_dashboard_data(user)
-    except Exception as e:
-        logger.warning(f'Seed demo data failed: {e}')
-
-    # Build each section independently so one failure doesn't crash everything
-    stats = {}
-    sdr_profile = {}
-    today_queue = {}
-    recent_activities = []
-    source_performance = []
-    pipeline_snapshot = {}
-    ai_recommendations = []
-    maton_meetings = []
-
-    for fname, fargs in [
-        ('stats', lambda: _build_stats(workspace_id, user['id'])),
-        ('sdr_profile', lambda: _build_sdr_profile(user)),
-        ('today_queue', lambda: _build_today_queue(workspace_id, user['id'])),
-        ('recent_activities', lambda: _build_recent_activities(workspace_id, user['id'])),
-        ('source_performance', lambda: _build_source_performance(workspace_id)),
-        ('pipeline_snapshot', lambda: _build_pipeline_snapshot(workspace_id)),
-        ('ai_recommendations', lambda: _build_ai_recommendations(workspace_id, user['id'], stats, today_queue)),
-    ]:
+        current_user_id = request.headers.get('X-User-ID', '1')
         try:
-            result = fargs()
-            if fname == 'stats' and isinstance(result, dict):
-                stats = result
-            elif fname == 'sdr_profile' and isinstance(result, dict):
-                sdr_profile = result
-            elif fname == 'today_queue' and isinstance(result, dict):
-                today_queue = result
-            elif fname == 'recent_activities' and isinstance(result, list):
-                recent_activities = result
-            elif fname == 'source_performance' and isinstance(result, list):
-                source_performance = result
-            elif fname == 'pipeline_snapshot' and isinstance(result, dict):
-                pipeline_snapshot = result
-            elif fname == 'ai_recommendations' and isinstance(result, list):
-                ai_recommendations = result
+            current_user_id = int(current_user_id)
+        except (ValueError, TypeError):
+            current_user_id = 1
+        
+        # Make user check optional - allow unauthenticated access
+        user = None
+        try:
+            user = select_one('users', filters=[eq('id', int(current_user_id))])
         except Exception as e:
-            logger.warning(f'Failed to build {fname}: {e}')
+            logger.warning(f"User lookup failed: {e}")
+        
+        if not user:
+            # Create a default user context for unauthenticated requests
+            user = {
+                'id': current_user_id,
+                'name': 'Guest User',
+                'workspace_id': 1,
+                'email': 'guest@example.com',
+                'role': 'sdr'
+            }
 
-    # Get Maton meetings with timeout
-    import threading
-    maton_result = []
-    def _fetch_maton():
+        workspace_id = user.get('workspace_id', 1)
+
+        # Build each section independently so one failure doesn't crash everything
+        stats = {}
+        sdr_profile = {}
+        today_queue = {}
+        recent_activities = []
+        source_performance = []
+        pipeline_snapshot = {}
+        ai_recommendations = []
+        maton_meetings = []
+
+        for fname, fargs in [
+            ('stats', lambda: _build_stats(workspace_id, user['id'])),
+            ('sdr_profile', lambda: _build_sdr_profile(user)),
+            ('today_queue', lambda: _build_today_queue(workspace_id, user['id'])),
+            ('recent_activities', lambda: _build_recent_activities(workspace_id, user['id'])),
+            ('source_performance', lambda: _build_source_performance(workspace_id)),
+            ('pipeline_snapshot', lambda: _build_pipeline_snapshot(workspace_id)),
+            ('ai_recommendations', lambda: _build_ai_recommendations(workspace_id, user['id'], stats, today_queue)),
+        ]:
+            try:
+                result = fargs()
+                if fname == 'stats' and isinstance(result, dict):
+                    stats = result
+                elif fname == 'sdr_profile' and isinstance(result, dict):
+                    sdr_profile = result
+                elif fname == 'today_queue' and isinstance(result, dict):
+                    today_queue = result
+                elif fname == 'recent_activities' and isinstance(result, list):
+                    recent_activities = result
+                elif fname == 'source_performance' and isinstance(result, list):
+                    source_performance = result
+                elif fname == 'pipeline_snapshot' and isinstance(result, dict):
+                    pipeline_snapshot = result
+                elif fname == 'ai_recommendations' and isinstance(result, list):
+                    ai_recommendations = result
+            except Exception as e:
+                logger.error(f'Failed to build {fname}: {e}', exc_info=True)
+
+        # Get Maton meetings with timeout
         try:
-            maton_result.append(_build_maton_meetings(workspace_id))
-        except Exception:
-            pass
-    t = threading.Thread(target=_fetch_maton)
-    t.start()
-    t.join(timeout=8)
-    maton_meetings = maton_result[0] if maton_result else []
+            import threading
+            maton_result = []
+            def _fetch_maton():
+                try:
+                    maton_result.append(_build_maton_meetings(workspace_id))
+                except Exception:
+                    pass
+            t = threading.Thread(target=_fetch_maton)
+            t.start()
+            t.join(timeout=8)
+            maton_meetings = maton_result[0] if maton_result else []
+        except Exception as e:
+            logger.error(f"Maton meetings failed: {e}")
 
-    return jsonify({
-        'stats': stats,
-        'sdr_profile': sdr_profile,
-        'today_queue': today_queue,
-        'recent_activities': recent_activities,
-        'source_performance': source_performance,
-        'pipeline_snapshot': pipeline_snapshot,
-        'ai_recommendations': ai_recommendations,
-        'maton_meetings': maton_meetings,
-    })
+        return jsonify({
+            'stats': stats,
+            'sdr_profile': sdr_profile,
+            'today_queue': today_queue,
+            'recent_activities': recent_activities,
+            'source_performance': source_performance,
+            'pipeline_snapshot': pipeline_snapshot,
+            'ai_recommendations': ai_recommendations,
+            'maton_meetings': maton_meetings,
+        })
+    except Exception as e:
+        logger.error(f"Dashboard summary endpoint failed: {e}", exc_info=True)
+        # Return minimal response instead of crashing
+        return jsonify({
+            'stats': {},
+            'sdr_profile': {'name': 'Guest User', 'email': 'guest@example.com', 'role': 'Sdr', 'avatar': 'GU', 'team_size': 1, 'streak': 0, 'rank': 'New Recruit 🌱', 'leads_generated': 0},
+            'today_queue': {'follow_ups_due': 0, 'positive_replies_needing_response': 0, 'meetings_today': 0, 'leads_needing_enrichment': 0},
+            'recent_activities': [],
+            'source_performance': [],
+            'pipeline_snapshot': {},
+            'ai_recommendations': [],
+            'maton_meetings': [],
+            'error': str(e)
+        }), 200
