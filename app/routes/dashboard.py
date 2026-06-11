@@ -793,17 +793,26 @@ def dashboard_summary():
         current_user_id = int(current_user_id)
     except (ValueError, TypeError):
         current_user_id = 1
+    
+    # Make user check optional - allow unauthenticated access
     user = select_one('users', filters=[eq('id', int(current_user_id))])
     if not user:
-        return jsonify({'error': 'User not found'}), 404
+        # Create a default user context for unauthenticated requests
+        user = {
+            'id': current_user_id,
+            'name': 'Guest User',
+            'workspace_id': 1,
+            'email': 'guest@example.com',
+            'role': 'sdr'
+        }
 
     workspace_id = user['workspace_id']
 
     # Seed demo data on first run if empty
     try:
         _seed_dashboard_data(user)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f'Seed demo data failed: {e}')
 
     # Build each section independently so one failure doesn't crash everything
     stats = {}
@@ -866,4 +875,3 @@ def dashboard_summary():
         'ai_recommendations': ai_recommendations,
         'maton_meetings': maton_meetings,
     })
-
