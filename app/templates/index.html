@@ -1553,48 +1553,50 @@ function sendChatMessage(text) {
   msgsEl.scrollTop = msgsEl.scrollHeight;
   var bubble = aiDiv.querySelector('.bubble');
 
+  // Remove authToken check - make API call directly
+  var firehose = {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages: [{role: 'user', content: msg}] })
+  };
+  // Add auth header only if token exists
   if (authToken) {
-    var firehose = {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
-      body: JSON.stringify({ messages: [{role: 'user', content: msg}] })
-    };
-    fetch(API_BASE + '/api/ai/chat', firehose).then(function(res) {
-      if (!res.ok) throw new Error('Failed');
-      var reader = res.body.getReader();
-      var decoder = new TextDecoder();
-      var fullText = '';
-      bubble.innerHTML = '';
-      function tryRead() {
-        reader.read().then(function(res2) {
-          if (res2.done) {
-            bubble.innerHTML = formatChatResponse(fullText) || 'No response';
-            msgsEl.scrollTop = msgsEl.scrollHeight;
-            return;
-          }
-          var chunk = decoder.decode(res2.value, { stream: true });
-          var lines = chunk.split('\n');
-          for (var i = 0; i < lines.length; i++) {
-            var line = lines[i];
-            if (line.indexOf('data: ') === 0) {
-              var data = line.slice(6);
-              if (data === '[DONE]') break;
-              try { var parsed = JSON.parse(data); fullText += (parsed.text || parsed.content || ''); }
-              catch(e) { fullText += data; }
-            }
-          }
-          bubble.innerHTML = formatChatResponse(fullText) || '...';
-          msgsEl.scrollTop = msgsEl.scrollHeight;
-          tryRead();
-        }).catch(function() { bubble.innerHTML = formatChatResponse(fullText || 'Error reading stream'); });
-      }
-      tryRead();
-    }).catch(function(err) {
-      bubble.innerHTML = 'Sorry, unable to reach the AI assistant. Error: ' + (err.message || 'Connection failed');
-    });
-  } else {
-    bubble.innerHTML = 'Please connect your backend to use the AI assistant.';
+    firehose.headers['Authorization'] = 'Bearer ' + authToken;
   }
+  
+  fetch(API_BASE + '/api/ai/chat', firehose).then(function(res) {
+    if (!res.ok) throw new Error('Failed');
+    var reader = res.body.getReader();
+    var decoder = new TextDecoder();
+    var fullText = '';
+    bubble.innerHTML = '';
+    function tryRead() {
+      reader.read().then(function(res2) {
+        if (res2.done) {
+          bubble.innerHTML = formatChatResponse(fullText) || 'No response';
+          msgsEl.scrollTop = msgsEl.scrollHeight;
+          return;
+        }
+        var chunk = decoder.decode(res2.value, { stream: true });
+        var lines = chunk.split('\n');
+        for (var i = 0; i < lines.length; i++) {
+          var line = lines[i];
+          if (line.indexOf('data: ') === 0) {
+            var data = line.slice(6);
+            if (data === '[DONE]') break;
+            try { var parsed = JSON.parse(data); fullText += (parsed.text || parsed.content || ''); }
+            catch(e) { fullText += data; }
+          }
+        }
+        bubble.innerHTML = formatChatResponse(fullText) || '...';
+        msgsEl.scrollTop = msgsEl.scrollHeight;
+        tryRead();
+      }).catch(function() { bubble.innerHTML = formatChatResponse(fullText || 'Error reading stream'); });
+    }
+    tryRead();
+  }).catch(function(err) {
+    bubble.innerHTML = 'Sorry, unable to reach the AI assistant. Error: ' + (err.message || 'Connection failed');
+  });
 }
 
 
