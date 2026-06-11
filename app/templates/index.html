@@ -540,7 +540,7 @@ const SDR_USER_ID = 1;
 const SDR_WORKSPACE_ID = 1;
 const SDR_NAME = 'Kathy Roggers';
 const SDR_EMAIL = 'kathy.roggers@myflashcloud.com';
-let authToken = localStorage.getItem('lhai_token') || 'demo-token-bypass-auth';
+let authToken = localStorage.getItem('lhai_token') || null;
 let liStatsCache = {};
 let liFeedCache = [];
 let activityLogCache = [];
@@ -1008,17 +1008,15 @@ function loadDashboard() {
       updateRefreshTime();
       if (refreshBtn) refreshBtn.textContent = '🔄';
     })
-    .catch(function() {
-      // Fallback: try loading legacy stats, then demo
-      var p1 = Promise.resolve();
-      var p2 = Promise.resolve();
-      var p3 = Promise.resolve();
-      Promise.all([p1, p2, p3]).then(function() { renderDashboardDemo(); }).catch(function() { renderDashboardDemo(); });
+    .catch(function(err) {
+      console.error('Dashboard load failed:', err);
+      renderNoDataDashboard();
+      if (refreshBtn) refreshBtn.textContent = '🔄';
     });
 }
 
 function renderRealDashboard(d) {
-  if (!d || !d.stats) { renderDashboardDemo(); return; }
+  if (!d || !d.stats) { renderNoDataDashboard(); return; }
 
   var stats = d.stats || {};
   var profile = d.sdr_profile || {};
@@ -1248,58 +1246,6 @@ function renderRealDashboard(d) {
     timelineEl.innerHTML = '<div style="padding:16px;color:var(--text-muted);font-size:13px;text-align:center">No recent activity. Start your day with outreach!</div>';
   }
 }
-function renderMyDashboard(d) {
-  document.getElementById('dash-stats').innerHTML = [
-    { label: 'My Deals', value: d.total_deals, change: 'Last 180 days', dir: 'up' },
-    { label: 'Pipeline Value', value: '$' + d.total_value.toLocaleString(), change: '', dir: 'up' },
-    { label: 'Avg Deal Size', value: '$' + d.avg_deal.toLocaleString(), change: '', dir: 'up' },
-    { label: 'Deal Stages', value: (d.stages || []).length, change: 'different stages', dir: 'up' }
-  ].map(function(c) {
-    return '<div class="stat-card"><div class="stat-label">' + c.label + '</div><div class="stat-value" style="color:var(--accent)">' + c.value + '</div><div class="stat-change ' + c.dir + '">' + c.change + '</div></div>';
-  }).join('');
-
-  // Timeline — list of your deals by date
-  document.getElementById('dash-timeline').innerHTML = (d.timeline || []).map(function(i) {
-    return '<div class="timeline-item"><div class="time">' + i.date + '</div><div class="desc">' + i.desc + '</div><div class="meta">' + i.stage + ' — $' + i.amount + '</div></div>';
-  }).join('') || '<div style="padding:20px;color:var(--text-muted)">No activity in last 30 days</div>';
-
-  // Targets — stage breakdown
-  document.getElementById('dash-targets').innerHTML = (d.stages || []).map(function(s) {
-    var color = s.pct >= 50 ? 'var(--success)' : s.pct >= 20 ? 'var(--warning)' : 'var(--accent)';
-    return '<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:13px">' +
-      '<span>' + s.stage + '</span><span style="color:var(--accent)">' + s.count + ' (' + s.pct + '%)</span></div>' +
-      '<div class="progress-track"><div class="progress-fill" style="width:' + s.pct + '%;background:' + color + '"></div></div></div>';
-  }).join('');
-
-  // Source breakdown (by stage name for now)
-  var totalDeals = d.total_deals || 1;
-  _setInner('dash-sources', (d.stages || []).map(function(s) {
-    return '<div class="progress-label mb16"><span class="prog-name">' + s.stage + ' <span style="color:var(--text-muted);font-size:11px">(' + s.count + ')</span></span><span class="prog-val" style="color:var(--accent)">' + s.pct + '%</span></div><div class="progress-track mb16"><div class="progress-fill" style="width:' + s.pct + '%;background:var(--accent)"></div></div>';
-  }).join(''));
-
-  // LI feed and follow-ups — show empty or deal list
-  _setInner('dash-li-feed', (d.deals || []).slice(0, 5).map(function(dl) {
-    return '<div class="activity-item"><div class="activity-icon" style="font-size:16px">💼</div><div class="activity-body"><div class="act-title">' + dl.name + '</div><div class="act-meta">$' + dl.amount + ' — ' + dl.stage + '</div></div></div>';
-  }).join('') || '<div style="padding:20px;color:var(--text-muted)">No recent deals</div>');
-
-  _setInner('dash-followups', '');
-}
-
-
-function renderDashboardDemo() {
-  _setInner('dash-stats', '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted)">No dashboard data available. Login and connect your backend to see metrics.</div>');
-  _setInner('dash-funnel', '<div style="padding:20px;text-align:center;color:var(--text-muted)">No pipeline data</div>');
-  _setInner('dash-trend-chart', '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px">No activity data</div>');
-  _setInner('dash-targets', '<div style="padding:20px;text-align:center;color:var(--text-muted)">No targets loaded</div>');
-  _setInner('ai-rec-list', '<div style="padding:20px;text-align:center;color:var(--text-muted)">No recommendations</div>');
-  _setInner('dash-timeline', '<div style="padding:20px;text-align:center;color:var(--text-muted)">No activity data</div>');
-  _setInner('dash-outreach-bars', '<div style="padding:20px;text-align:center;color:var(--text-muted)">No outreach data</div>');
-  _setInner('dash-hubspot-summary', '<div style="padding:20px;text-align:center;color:var(--text-muted)">No HubSpot data</div>');
-  _setInner('dash-sources', '<div style="padding:20px;text-align:center;color:var(--text-muted)">No source data</div>');
-  _setInner('dash-li-feed', '<div style="padding:20px;text-align:center;color:var(--text-muted)">No LinkedIn activity</div>');
-  _setInner('dash-followups', '<div style="padding:20px;text-align:center;color:var(--text-muted)">No follow-ups</div>');
-  updateRefreshTime();
-}
 
 function updateRefreshTime() {
   var el = document.getElementById('refresh-text');
@@ -1420,8 +1366,8 @@ function batchDeleteLeads() {
   if (!confirm('Delete ' + ids.length + ' leads permanently?')) return;
   api('/api/leads/batch-delete', { method: 'POST', body: JSON.stringify({ ids: ids }) })
     .then(function() { loadLeads(); })
-    .catch(function() {
-      // (no longer demo)
+    .catch(function(err) {
+      console.error('Batch delete failed:', err);
       loadLeads();
     });
 }
@@ -1432,9 +1378,8 @@ function deleteLead(leadId) {
     .then(function() {
       loadLeads();
     })
-    .catch(function() {
-      // (no longer demo)
-      // (no longer demo)
+    .catch(function(err) {
+      console.error('Delete lead failed:', err);
       loadLeads();
     });
 }
@@ -1552,7 +1497,17 @@ function copyEmail() {
 }
 
 function sendEmailFromGen() {
-  alert('Email queued for sending (demo mode)');
+  var subject = document.getElementById('eg-subject').textContent.replace('Subject: ', '');
+  var body = document.getElementById('eg-output').textContent;
+  if (!body || body === 'Fill in lead context and click generate...') { alert('Generate an email first.'); return; }
+  api('/api/gmail/send', {
+    method: 'POST',
+    body: JSON.stringify({ subject: subject, body: body })
+  }).then(function() {
+    alert('Email sent successfully!');
+  }).catch(function() {
+    alert('Send failed — check Gmail integration in Settings.');
+  });
 }
 
 /* === AI CHAT === */
@@ -2195,13 +2150,54 @@ function loadAdmin() {
   var healthDot = document.getElementById('health-dot');
   var healthText = document.getElementById('health-text');
   var healthDetails = document.getElementById('health-details');
+  var t0 = Date.now();
+
   api('/api/admin/system-health').then(function(r) {
-    healthText.textContent = 'All Systems Operational';
-    healthDetails.innerHTML = '<div>API: ✅ Online</div><div>Database: ✅ Connected</div><div>Auth: ✅ Active</div><div>Groq AI: ✅ Available</div><div>Last checked: ' + new Date().toLocaleString() + '</div>';
+    var ms = Date.now() - t0;
+    if (healthText) healthText.textContent = 'All Systems Operational';
+    if (healthDot) healthDot.className = 'health-dot health-ok';
+    if (healthDetails) healthDetails.innerHTML =
+      '<div>API: ✅ Online</div>' +
+      '<div>Database: ' + (r.database ? '✅ Connected' : '⚠️ Degraded') + '</div>' +
+      '<div>Auth: ✅ Active</div>' +
+      '<div>Groq AI: ' + (r.groq ? '✅ Available' : '⚠️ Unavailable') + '</div>' +
+      '<div style="margin-top:6px;color:var(--text-muted)">Last checked: ' + new Date().toLocaleTimeString() + '</div>';
+    var respEl = document.getElementById('admin-stat-response');
+    if (respEl) respEl.textContent = ms + 'ms';
+    var uptimeEl = document.getElementById('admin-stat-uptime');
+    if (uptimeEl) uptimeEl.textContent = r.uptime || '—';
+    var usersEl = document.getElementById('admin-stat-users');
+    if (usersEl) usersEl.textContent = r.user_count || '—';
   }).catch(function(e) {
-    healthText.textContent = 'System Status Unknown';
-    if (healthDot) healthDot.className = 'health-dot health-warn';
-    if (healthDetails) healthDetails.innerHTML = '<div>API: ⚠️ Unreachable — showing demo</div>';
+    if (healthText) healthText.textContent = 'Cannot reach backend';
+    if (healthDot) healthDot.className = 'health-dot health-fail';
+    if (healthDetails) healthDetails.innerHTML = '<div>API: ❌ Unreachable</div><div style="margin-top:4px;color:var(--text-muted);font-size:12px">' + (e && e.message ? e.message : 'Check server logs') + '</div>';
+  });
+
+  api('/api/admin/sdr-performance').then(function(r) {
+    var rows = (r.sdrs || []);
+    var tbody = document.getElementById('admin-sdr-body');
+    if (!tbody) return;
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:20px">No SDR data available</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(function(s) {
+      var statusCls = s.active ? 'health-ok' : 'health-warn';
+      var statusLabel = s.active ? 'Active' : 'Away';
+      var convCls = (parseFloat(s.conversion)||0) >= 9 ? 'badge-high' : 'badge-med';
+      return '<tr>' +
+        '<td style="color:var(--text)">' + escapeHtml(s.name || '—') + '</td>' +
+        '<td>' + (s.leads_found || 0) + '</td>' +
+        '<td>' + (s.emails_sent || 0) + '</td>' +
+        '<td>' + (s.meetings || 0) + '</td>' +
+        '<td><span class="badge ' + convCls + '">' + (s.conversion || '0') + '%</span></td>' +
+        '<td><span class="health-dot ' + statusCls + '"></span>' + statusLabel + '</td>' +
+      '</tr>';
+    }).join('');
+  }).catch(function() {
+    var tbody = document.getElementById('admin-sdr-body');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:20px">SDR performance data unavailable</td></tr>';
   });
 }
 

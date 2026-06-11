@@ -6,10 +6,7 @@
     <table>
       <thead><tr><th>SDR</th><th>Leads Found</th><th>Emails Sent</th><th>Meetings</th><th>Conversion</th><th>Activity</th></tr></thead>
       <tbody id="admin-sdr-body">
-        <tr><td style="color:var(--text)">Sarah Johnson</td><td>342</td><td>1,287</td><td>31</td><td><span class="badge badge-high">9.1%</span></td><td><span class="health-dot health-ok"></span>Active</td></tr>
-        <tr><td style="color:var(--text)">Mike Chen</td><td>289</td><td>956</td><td>22</td><td><span class="badge badge-med">7.7%</span></td><td><span class="health-dot health-ok"></span>Active</td></tr>
-        <tr><td style="color:var(--text)">Alex Rivera</td><td>198</td><td>743</td><td>18</td><td><span class="badge badge-med">9.1%</span></td><td><span class="health-dot health-warn"></span>Away</td></tr>
-        <tr><td style="color:var(--text)">Emma Wilson</td><td>415</td><td>1,502</td><td>44</td><td><span class="badge badge-high">10.6%</span></td><td><span class="health-dot health-ok"></span>Active</td></tr>
+        <tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px"><span class="spinner"></span> Loading team data...</td></tr>
       </tbody>
     </table>
   </div>
@@ -25,17 +22,17 @@
     </div>
     <div class="grid-card">
       <div class="section-title">Quick Stats</div>
-      <div class="flex gap8 flex-wrap">
+      <div class="flex gap8 flex-wrap" id="admin-quick-stats">
         <div style="flex:1;min-width:120px;padding:12px;background:var(--card);border-radius:var(--radius-sm);text-align:center">
-          <div style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:600;color:var(--accent)">12</div>
+          <div id="admin-stat-users" style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:600;color:var(--accent)">—</div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Total Users</div>
         </div>
         <div style="flex:1;min-width:120px;padding:12px;background:var(--card);border-radius:var(--radius-sm);text-align:center">
-          <div style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:600;color:var(--success)">99.8%</div>
+          <div id="admin-stat-uptime" style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:600;color:var(--success)">—</div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Uptime</div>
         </div>
         <div style="flex:1;min-width:120px;padding:12px;background:var(--card);border-radius:var(--radius-sm);text-align:center">
-          <div style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:600;color:var(--warning)">42ms</div>
+          <div id="admin-stat-response" style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:600;color:var(--warning)">—</div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Avg Response</div>
         </div>
       </div>
