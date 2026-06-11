@@ -829,7 +829,6 @@ def dashboard_summary():
         'source_performance': [],
         'pipeline_snapshot': {},
         'ai_recommendations': [],
-        'maton_meetings': [],
         'errors': []
     }
     
@@ -935,14 +934,6 @@ def dashboard_summary():
             response_data['errors'].append(f"AI recommendations: {str(e)}")
             response_data['ai_recommendations'] = []
 
-        # Build Maton meetings - skip if fails
-        try:
-            response_data['maton_meetings'] = _build_maton_meetings(workspace_id)
-        except Exception as e:
-            logger.error(f'Maton meetings failed: {e}', exc_info=True)
-            response_data['errors'].append(f"Maton meetings: {str(e)}")
-            response_data['maton_meetings'] = []
-
         return jsonify(response_data), 200
 
     except Exception as e:
@@ -956,7 +947,6 @@ def dashboard_summary():
             'source_performance': [],
             'pipeline_snapshot': {},
             'ai_recommendations': [],
-            'maton_meetings': [],
             'errors': [f"Critical error: {str(e)}"],
             'error_type': type(e).__name__
         }), 200
