@@ -1106,7 +1106,16 @@ tr:last-child td{border-bottom:none}
 </div>
 
 <script>
-const API_BASE = window.location.origin;
+// Smart backend detection: try current origin first, fallback to Render if needed
+const API_BASE = (function() {
+  // Check if we're in development (localhost)
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'http://localhost:5000';
+  }
+  
+  // For production: use current origin (works when backend and frontend are deployed together)
+  return window.location.origin;
+})();
 
 // SDR Configuration - Kathy Roggers
 const SDR_USER_ID = 1;
