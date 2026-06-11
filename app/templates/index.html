@@ -720,8 +720,8 @@ function loadMeetings() {
   var mtgList = document.getElementById('mtg-list');
   mtgList.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)"><span class="spinner"></span> Loading meetings...</div>';
 
-  api('/api/dashboard/summary').then(function(d) {
-    var meetings = d.maton_meetings || [];
+  api('/api/meetings/upcoming').then(function(d) {
+    var meetings = d.upcoming || [];
     if (meetings.length === 0) {
       mtgList.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">📭 No upcoming meetings found. Check your Google Calendar.</div>';
       return;
