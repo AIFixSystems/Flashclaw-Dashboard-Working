@@ -1355,6 +1355,80 @@ function runHunt() {
     });
 }
 
+/* === GOOGLE MAPS SCRAPER === */
+function runGoogleMapsScraper() {
+  var query = document.getElementById('gmaps-query').value.trim();
+  var location = document.getElementById('gmaps-location').value.trim();
+  var limit = parseInt(document.getElementById('gmaps-limit').value) || 10;
+  var statusEl = document.getElementById('gmaps-status');
+  
+  if (!query) {
+    statusEl.textContent = '⚠️ Please enter a business type or industry';
+    statusEl.style.color = 'var(--danger)';
+    return;
+  }
+  
+  if (!location) {
+    statusEl.textContent = '⚠️ Please enter a location';
+    statusEl.style.color = 'var(--danger)';
+    return;
+  }
+  
+  statusEl.innerHTML = '<span class="spinner"></span> Scraping Google Maps for "' + escapeHtml(query) + '" in ' + escapeHtml(location) + '...';
+  statusEl.style.color = 'var(--text-muted)';
+  
+  var payload = {
+    sources: ['google-maps'],
+    icp: {
+      industry: query,
+      location: location,
+      companySize: '',
+      title: '',
+      keywords: ''
+    },
+    limit: limit
+  };
+  
+  api('/api/leads/hunt', { method: 'POST', body: JSON.stringify(payload) })
+    .then(function(r) {
+      var leads = r.leads || [];
+      if (leads.length === 0) {
+        statusEl.textContent = '⚠️ No businesses found. Try different search terms.';
+        statusEl.style.color = 'var(--warning)';
+        return;
+      }
+      
+      statusEl.innerHTML = '✅ Found ' + leads.length + ' businesses! <a href="#" onclick="showTab(\'leads\'); return false;" style="color:var(--accent);text-decoration:underline;margin-left:8px">View in Leads Database →</a>';
+      statusEl.style.color = 'var(--success)';
+      
+      // Show results preview
+      var resultsHtml = '<div style="margin-top:16px;padding:16px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);max-height:300px;overflow-y:auto">';
+      resultsHtml += '<div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--text)">📍 Scraped Businesses:</div>';
+      leads.slice(0, 5).forEach(function(l) {
+        resultsHtml += '<div style="padding:10px;margin-bottom:8px;background:var(--surface);border-radius:var(--radius-sm);border-left:3px solid var(--accent)">';
+        resultsHtml += '<div style="font-weight:600;font-size:13px;color:var(--text)">' + escapeHtml(l.company || 'Unknown') + '</div>';
+        if (l.location) resultsHtml += '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">📍 ' + escapeHtml(l.location) + '</div>';
+        if (l.phone) resultsHtml += '<div style="font-size:11px;color:var(--text-sec);margin-top:2px">📞 ' + escapeHtml(l.phone) + '</div>';
+        if (l.website) resultsHtml += '<div style="font-size:11px;margin-top:2px"><a href="' + escapeHtml(l.website) + '" target="_blank" style="color:var(--accent)">🌐 Website</a></div>';
+        resultsHtml += '</div>';
+      });
+      if (leads.length > 5) {
+        resultsHtml += '<div style="text-align:center;padding:8px;color:var(--text-muted);font-size:12px">+ ' + (leads.length - 5) + ' more businesses</div>';
+      }
+      resultsHtml += '</div>';
+      statusEl.innerHTML += resultsHtml;
+      
+      // Refresh leads tab if it's active
+      if (document.getElementById('tab-leads').classList.contains('active')) {
+        loadLeads();
+      }
+    })
+    .catch(function(err) {
+      statusEl.textContent = '❌ Scraping failed: ' + (err.message || 'Check backend connection');
+      statusEl.style.color = 'var(--danger)';
+    });
+}
+
 /* === LEADS === */
 function toggleAllLeads(el) {
   var cbs = document.querySelectorAll('.lead-checkbox');
