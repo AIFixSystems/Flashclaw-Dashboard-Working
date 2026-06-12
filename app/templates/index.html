@@ -493,8 +493,7 @@ tr:last-child td{border-bottom:none}
   </div>
   <nav class="sidebar-nav">
     <div class="nav-section">Main</div>
-    <div class="nav-item active" onclick="showTab('dashboard')"><span class="nav-icon">📊</span><span>Dashboard</span></div>
-    <div class="nav-item" onclick="showTab('lead-hunter')"><span class="nav-icon">🎯</span><span>Lead Hunter</span></div>
+    <div class="nav-item active" onclick="showTab('lead-hunter')"><span class="nav-icon">🎯</span><span>Lead Hunter</span></div>
     <div class="nav-item" onclick="showTab('leads')"><span class="nav-icon">👥</span><span>Leads Database</span></div>
     <div class="nav-item" onclick="showTab('email-gen')"><span class="nav-icon">✉️</span><span>Email Generator</span></div>
     <div class="nav-item" onclick="showTab('linkedin-tracker')"><span class="nav-icon">🔗</span><span>LinkedIn Tracker</span></div>
@@ -504,11 +503,9 @@ tr:last-child td{border-bottom:none}
     <div class="nav-section">Intelligence</div>
     <div class="nav-item" onclick="showTab('meetings')"><span class="nav-icon">📅</span><span>Meetings</span></div>
     <div class="nav-item" onclick="showTab('ai-agent')"><span class="nav-icon">🤖</span><span>AI Agent</span></div>
-    <div class="nav-item" onclick="showTab('analytics')"><span class="nav-icon">📈</span><span>Analytics</span></div>
 
     <div class="nav-section">System</div>
     <div class="nav-item" onclick="showTab('integrations')"><span class="nav-icon">🔌</span><span>Integrations</span></div>
-    <div class="nav-item" onclick="showTab('api-config')"><span class="nav-icon">⚙️</span><span>API Config</span></div>
     <div class="nav-item" onclick="showTab('admin')"><span class="nav-icon">🛡️</span><span>Admin</span></div>
   </nav>
   <div class="sidebar-footer">
@@ -533,7 +530,6 @@ tr:last-child td{border-bottom:none}
 </header>
 
 <div class="content-area">
-{% include 'tabs/dashboard.html' %}
 {% include 'tabs/lead_hunter.html' %}
 {% include 'tabs/leads.html' %}
 {% include 'tabs/email_gen.html' %}
@@ -541,10 +537,8 @@ tr:last-child td{border-bottom:none}
 {% include 'tabs/linkedin_tracker.html' %}
 {% include 'tabs/hubspot.html' %}
 {% include 'tabs/meetings.html' %}
-{% include 'tabs/analytics.html' %}
 {% include 'tabs/sdr_activity.html' %}
 {% include 'tabs/integrations.html' %}
-{% include 'tabs/api_config.html' %}
 {% include 'tabs/admin.html' %}
 </div> <!-- /content-area -->
 </div> <!-- /main-area -->
@@ -658,7 +652,7 @@ function showApp() {
   if (tokenEl) tokenEl.textContent = tok.length > 20 ? tok.slice(0, 20) + '...' : tok;
   var sidebarUser = document.getElementById('sidebar-user');
   if (sidebarUser) sidebarUser.textContent = 'Kathy Roggers';
-  showTab('dashboard');
+  showTab('lead-hunter');
 }
 
 /* Auto-check on load */

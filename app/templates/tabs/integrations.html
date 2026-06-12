@@ -1,33 +1,7 @@
-
 <!-- INTEGRATIONS -->
 <div class="tab-content" id="tab-integrations">
   <div class="section-title">Connected Services</div>
   <div id="integrations-list">
-    <div class="integration-card">
-      <div class="int-icon">📧</div>
-      <div class="int-info"><h4>Gmail</h4><p>Send and track emails</p></div>
-      <span class="int-status" style="background:rgba(62,207,142,.15);color:var(--success)">Connected</span>
-      <span style="font-size:11px;color:var(--text-muted);display:block;margin-top:4px;">sawerakhadium557@gmail.com</span>
-      <div style="margin-top:8px;" id="gmail-preview"><span class="spinner"></span> Loading emails...</div>
-      <script>
-      setTimeout(function() {
-      if (typeof gmailLoaded === 'undefined') { gmailLoaded = true;
-        api('/api/gmail/emails?limit=3').then(function(d) {
-          if (!d || !d.emails) return;
-          var h = '<div style="font-size:12px;font-weight:600;margin:6px 0 4px">📬 Recent Emails</div>';
-          d.emails.forEach(function(e) {
-            h += '<div style="font-size:11px;padding:4px 0;border-bottom:1px solid var(--border)">';
-            h += '<b>' + e.from.split('<')[0].trim() + '</b>: ' + e.subject;
-            h += '<div style="color:var(--text-muted);font-size:10px">' + e.date + '</div></div>';
-          });
-          document.getElementById('gmail-preview').innerHTML = h;
-        }).catch(function() {
-          document.getElementById('gmail-preview').innerHTML = '';
-        });
-      }
-      });
-      </script>
-    </div>
     <div class="integration-card">
       <div class="int-icon">📧</div>
       <div class="int-info"><h4>Gmail</h4><p>Send and track emails</p></div>
