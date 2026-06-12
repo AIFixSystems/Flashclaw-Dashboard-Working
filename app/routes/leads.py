@@ -400,7 +400,7 @@ def hunt_leads():
 
     # Pre-load existing emails in this workspace to avoid UNIQUE constraint failures
     existing_emails = set()
-    emails_result = supabase.table('leads').select('email').neq('email', '').is_('email', 'not', 'null').eq('workspace_id', user['workspace_id']).execute()
+    emails_result = supabase.table('leads').select('email').neq('email', '').not_.is_('email', 'null').eq('workspace_id', user['workspace_id']).execute()
     for row in emails_result.data:
         em = row.get('email')
         if em:
