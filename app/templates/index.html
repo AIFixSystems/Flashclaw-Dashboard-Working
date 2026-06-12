@@ -552,11 +552,11 @@ tr:last-child td{border-bottom:none}
 <script>
 const API_BASE = window.location.origin;
 
-// SDR Configuration - Kathy Roggers
-const SDR_USER_ID = 1;
-const SDR_WORKSPACE_ID = 1;
-const SDR_NAME = 'Kathy Roggers';
-const SDR_EMAIL = 'kathy.roggers@myflashcloud.com';
+// SDR Configuration - Loaded from Environment Variables
+const SDR_USER_ID = {{ sdr_config.user_id }};
+const SDR_WORKSPACE_ID = {{ sdr_config.workspace_id }};
+const SDR_NAME = '{{ sdr_config.name }}';
+const SDR_EMAIL = '{{ sdr_config.email }}';
 let authToken = localStorage.getItem('lhai_token') || null;
 let liStatsCache = {};
 let liFeedCache = [];

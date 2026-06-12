@@ -57,7 +57,14 @@ def create_app(config_name='dev'):
     @app.route('/dashboard')
     def serve_frontend():
         from flask import render_template
-        return render_template('index.html')
+        # Pass SDR configuration from environment variables
+        sdr_config = {
+            'user_id': os.environ.get('SDR_USER_ID', '1'),
+            'workspace_id': os.environ.get('SDR_WORKSPACE_ID', '1'),
+            'name': os.environ.get('SDR_NAME', 'Kathy Roggers'),
+            'email': os.environ.get('SDR_EMAIL', 'kathy.roggers@myflashcloud.com')
+        }
+        return render_template('index.html', sdr_config=sdr_config)
 
     @app.route('/api/health')
     def health():
