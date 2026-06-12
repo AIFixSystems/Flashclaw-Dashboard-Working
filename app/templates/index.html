@@ -493,10 +493,10 @@ tr:last-child td{border-bottom:none}
   </div>
   <nav class="sidebar-nav">
     <div class="nav-section">Main</div>
-    <div class="nav-item active" onclick="showTab('lead-hunter')"><span class="nav-icon">🎯</span><span>Lead Hunter</span></div>
+    <div class="nav-item" onclick="showTab('lead-hunter')"><span class="nav-icon">🎯</span><span>Lead Hunter</span></div>
     <div class="nav-item" onclick="showTab('leads')"><span class="nav-icon">👥</span><span>Leads Database</span></div>
     <div class="nav-item" onclick="showTab('email-gen')"><span class="nav-icon">✉️</span><span>Email Generator</span></div>
-    <div class="nav-item" onclick="showTab('linkedin-tracker')"><span class="nav-icon">🔗</span><span>LinkedIn Tracker</span></div>
+    <div class="nav-item active" onclick="showTab('linkedin-tracker')"><span class="nav-icon">🔗</span><span>LinkedIn Tracker</span></div>
     <div class="nav-item" onclick="showTab('hubspot')"><span class="nav-icon">🔄</span><span>Kathy Roggers Pipeline</span></div>
 
 
@@ -517,9 +517,9 @@ tr:last-child td{border-bottom:none}
 <div class="main-area">
 <header class="topbar">
   <div>
-    <h2 id="page-title">Lead Hunter</h2>
+    <h2 id="page-title">LinkedIn Tracker</h2>
     <div class="flex gap8 items-center">
-      <div class="sub" id="page-sub">Discover & enrich prospects</div>
+      <div class="sub" id="page-sub">Connection → Meeting pipeline</div>
       <div class="last-refresh" id="refresh-indicator"><span class="refresh-dot"></span> <span id="refresh-text">auto-updating</span></div>
     </div>
   </div>
@@ -652,7 +652,8 @@ function showApp() {
   if (tokenEl) tokenEl.textContent = tok.length > 20 ? tok.slice(0, 20) + '...' : tok;
   var sidebarUser = document.getElementById('sidebar-user');
   if (sidebarUser) sidebarUser.textContent = 'Kathy Roggers';
-  showTab('lead-hunter');
+  showTab('linkedin-tracker');
+  loadLinkedInTracker();  // ensure data loads on initial render
 }
 
 /* Auto-check on load */
@@ -675,6 +676,14 @@ function showApp() {
       showApp();
     });
   }
+  // Fallback: always load LinkedIn tracker after page settles, no matter what
+  setTimeout(function() {
+    var tab = document.getElementById('tab-linkedin-tracker');
+    if (tab) {
+      tab.classList.add('active');
+      loadLinkedInTracker();
+    }
+  }, 600);
 })();
 
 /* Login form */
