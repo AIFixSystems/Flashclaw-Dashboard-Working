@@ -1701,7 +1701,9 @@ function displayParsedPeople(people, container) {
 
 /* === LINKEDIN TRACKER === */
 function loadLinkedInTracker() {
-  api('/api/linkedin/stats').then(function(s) { if (s) var ls = s; }).catch(function() {}).then(function() {
+  api('/api/linkedin/stats').then(function(s) { 
+    if (s) liStatsCache = s; 
+  }).catch(function() {}).then(function() {
     api('/api/linkedin/activities?per_page=100').then(function(a) {
       if (a && a.activities) {
         liFeedCache = a.activities.map(function(act) {
