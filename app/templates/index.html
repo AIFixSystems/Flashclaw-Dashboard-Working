@@ -493,8 +493,7 @@ tr:last-child td{border-bottom:none}
   </div>
   <nav class="sidebar-nav">
     <div class="nav-section">Main</div>
-    <div class="nav-item active" onclick="showTab('dashboard')"><span class="nav-icon">📊</span><span>Dashboard</span></div>
-    <div class="nav-item" onclick="showTab('lead-hunter')"><span class="nav-icon">🎯</span><span>Lead Hunter</span></div>
+    <div class="nav-item active" onclick="showTab('lead-hunter')"><span class="nav-icon">🎯</span><span>Lead Hunter</span></div>
     <div class="nav-item" onclick="showTab('leads')"><span class="nav-icon">👥</span><span>Leads</span></div>
     <div class="nav-item" onclick="showTab('analytics')"><span class="nav-icon">📊</span><span>Analytics</span></div>
     <div class="nav-item" onclick="showTab('linkedin')"><span class="nav-icon">💼</span><span>LinkedIn</span></div>
@@ -654,7 +653,7 @@ function showApp() {
   if (tokenEl) tokenEl.textContent = tok.length > 20 ? tok.slice(0, 20) + '...' : tok;
   var sidebarUser = document.getElementById('sidebar-user');
   if (sidebarUser) sidebarUser.textContent = 'Kathy Roggers';
-  showTab('dashboard');
+  showTab('lead-hunter');
 }
 
 /* Auto-check on load */
